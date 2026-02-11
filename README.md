@@ -61,9 +61,9 @@ The system includes:
 ---
 
 ## Tech Stack
-- Laravel 10 (PHP 8.x)
-- MySQL / PostgreSQL
-- Livewire + Blade templates
+- Laravel 12 (PHP 8.2x)
+- MySQL 
+- Livewire + fillament+ Blade templates
 - Git & GitHub
 - Optional: Railway / Render for free hosting during testing
 
