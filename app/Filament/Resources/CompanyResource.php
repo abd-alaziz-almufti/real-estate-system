@@ -148,11 +148,21 @@ class CompanyResource extends Resource
                     ->trueColor('success')
                     ->falseColor('danger'),
 
-                Tables\Columns\TextColumn::make('users_count')
-                    ->counts('users')
-                    ->label('Users')
-                    ->badge()
-                    ->color('info'),
+                  Tables\Columns\TextColumn::make('users_count')
+                ->counts('users')
+                ->label('Users')
+                ->badge()
+                ->color('info')
+                ->url(fn ($record): string => 
+                    $record->users_count > 0 
+                        ? route('filament.admin.resources.users.index', ['tableFilters[company][value]' => $record->id])
+                        : '#'
+                )
+                ->tooltip(fn ($record): string => 
+                    $record->users_count > 0 
+                        ? 'Click to view users' 
+                        : 'No users'
+                ),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -187,7 +197,8 @@ class CompanyResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+                        RelationManagers\UsersRelationManager::class, // 🔥 Add this
+
         ];
     }
 
