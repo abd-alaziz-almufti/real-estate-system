@@ -38,7 +38,6 @@ class CompanyResource extends Resource
                         TextInput::make('name')
                             ->required()
                             ->maxLength(255)
-                            ->live(onBlur: true)
                             ->columnSpan(2),
 
                         TextInput::make('email')
@@ -67,7 +66,6 @@ class CompanyResource extends Resource
                             ->directory('company-logos')
                             ->imageEditor()
                             ->maxSize(2048)
-                            ->live()
                             ->maxFiles(1)
                             ->columnSpanFull(),
 
@@ -95,7 +93,6 @@ class CompanyResource extends Resource
                         Toggle::make('is_active')
                             ->label('Active Status')
                             ->default(true)
-                            ->live()
                             ->helperText(
                                 fn($state) =>
                                 !$state
@@ -148,21 +145,23 @@ class CompanyResource extends Resource
                     ->trueColor('success')
                     ->falseColor('danger'),
 
-                  Tables\Columns\TextColumn::make('users_count')
-                ->counts('users')
-                ->label('Users')
-                ->badge()
-                ->color('info')
-                ->url(fn ($record): string => 
-                    $record->users_count > 0 
-                        ? route('filament.admin.resources.users.index', ['tableFilters[company][value]' => $record->id])
-                        : '#'
-                )
-                ->tooltip(fn ($record): string => 
-                    $record->users_count > 0 
-                        ? 'Click to view users' 
-                        : 'No users'
-                ),
+                Tables\Columns\TextColumn::make('users_count')
+                    ->counts('users')
+                    ->label('Users')
+                    ->badge()
+                    ->color('info')
+                    ->url(
+                        fn($record): string =>
+                        $record->users_count > 0
+                            ? route('filament.admin.resources.users.index', ['tableFilters[company][value]' => $record->id])
+                            : '#'
+                    )
+                    ->tooltip(
+                        fn($record): string =>
+                        $record->users_count > 0
+                            ? 'Click to view users'
+                            : 'No users'
+                    ),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
@@ -197,7 +196,7 @@ class CompanyResource extends Resource
     public static function getRelations(): array
     {
         return [
-                        RelationManagers\UsersRelationManager::class, // 🔥 Add this
+            RelationManagers\UsersRelationManager::class, // 🔥 Add this
 
         ];
     }

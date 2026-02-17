@@ -18,6 +18,10 @@ class UserResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationGroup = '🏢 Core';
     protected static ?int $navigationSort = 3;
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+{
+    return parent::getEloquentQuery()->with(['company']);
+}
 
     public static function form(Form $form): Form
     {
