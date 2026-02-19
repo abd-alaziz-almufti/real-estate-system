@@ -1,5 +1,4 @@
 <?php
-// app/Filament/Resources/CompanyResource/Pages/ViewCompany.php
 
 namespace App\Filament\Resources\CompanyResource\Pages;
 
@@ -21,12 +20,13 @@ class ViewCompany extends ViewRecord
         ];
     }
 
-    // 🔥 Add this to display company info nicely
     public function infolist(Infolist $infolist): Infolist
     {
         return $infolist
             ->schema([
+                // Company Information section
                 Infolists\Components\Section::make('Company Information')
+                    ->collapsible()
                     ->schema([
                         Infolists\Components\ImageEntry::make('logo')
                             ->circular()
@@ -65,34 +65,47 @@ class ViewCompany extends ViewRecord
                     ])
                     ->columns(2),
 
-                Infolists\Components\Section::make('Statistics')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('users_count') // سيقرأ مباشرة من withCount
-                            ->label('Total Users')
-                            ->badge()
-                            ->color('info')
-                            ->icon('heroicon-m-users'),
+                // 🔥 Statistics as CARDS
+                  // 🔥 Clean Statistics - No HTML!
+            Infolists\Components\Section::make('Statistics')
+                ->schema([
+                    Infolists\Components\TextEntry::make('users_count')
+                        ->label('Total Users')
+                        ->badge()
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                        ->color('info')
+                        ->icon('heroicon-m-users'),
 
-                        Infolists\Components\TextEntry::make('active_users_count') // سيقرأ القيمة المحسوبة
-                            ->label('Active Staff')
-                            ->badge()
-                            ->color('success')
-                            ->icon('heroicon-m-user-group'),
+                    Infolists\Components\TextEntry::make('active_users_count')
+                        ->label('Active Staff')
+                        ->badge()
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                        ->color('success')
+                        ->icon('heroicon-m-user-group'),
 
-                        Infolists\Components\TextEntry::make('tenants_count') 
-                            ->label('Tenants')
-                            ->badge()
-                            ->color('gray')
-                            ->icon('heroicon-m-user'),
+                    Infolists\Components\TextEntry::make('tenants_count')
+                        ->label('Tenants')
+                        ->badge()
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                        ->color('gray')
+                        ->icon('heroicon-m-user'),
 
-                        Infolists\Components\TextEntry::make('created_at')
-                            ->label('Member Since')
-                            ->dateTime()
-                            ->since() 
-                            ->icon('heroicon-m-calendar'),
-                    ])
-                    ->columns(4)
-                    ->collapsible(),
+                    Infolists\Components\TextEntry::make('created_at')
+                        ->label('Member Since')
+                        ->since()
+                        ->badge()
+                        ->size(Infolists\Components\TextEntry\TextEntrySize::Medium)
+                        ->color('warning')
+                        ->icon('heroicon-m-calendar'),
+                ])
+                ->columns(4)
+                ->collapsible(),
             ]);
+    }
+
+    // 🔥 Enable tabs for relations
+    public function hasCombinedRelationManagerTabsWithContent(): bool
+    {
+        return true;
     }
 }

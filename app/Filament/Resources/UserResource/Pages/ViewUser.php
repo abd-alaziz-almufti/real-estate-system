@@ -1,4 +1,5 @@
 <?php
+// app/Filament/Resources/UserResource/Pages/ViewUser.php
 
 namespace App\Filament\Resources\UserResource\Pages;
 
@@ -14,6 +15,7 @@ class ViewUser extends ViewRecord
     {
         return [
             Actions\EditAction::make(),
+            Actions\DeleteAction::make(),
         ];
     }
 }

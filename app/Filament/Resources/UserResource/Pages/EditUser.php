@@ -1,4 +1,5 @@
 <?php
+// app/Filament/Resources/UserResource/Pages/EditUser.php
 
 namespace App\Filament\Resources\UserResource\Pages;
 
@@ -16,5 +17,10 @@ class EditUser extends EditRecord
             Actions\ViewAction::make(),
             Actions\DeleteAction::make(),
         ];
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
     }
 }
