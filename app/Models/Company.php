@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Company extends Model
 {
-      protected $fillable = [
+    protected $fillable = [
         'name',
         'email',
         'phone',
@@ -16,7 +16,7 @@ class Company extends Model
         'logo',
         'is_active',
     ];
-     protected $casts = [
+    protected $casts = [
         'is_active' => 'boolean',
     ];
 
@@ -24,7 +24,7 @@ class Company extends Model
     {
         return $this->hasMany(User::class);
     }
-      public function properties(): HasMany
+    public function properties(): HasMany
     {
         return $this->hasMany(Property::class);
     }
