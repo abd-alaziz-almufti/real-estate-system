@@ -57,10 +57,15 @@ class LeaseResource extends Resource
                                 'unit',
                                 'unit_number',
                                 // 🔥 PERFORMANCE: Only load available units + eager load property
-                                fn(Builder $query) => $query
-                                    ->where('status', 'available')
-                                    ->orWhere('id', fn($q) => old('unit_id'))
-                                    ->with('property:id,name') // ✅ Eager load for display
+                                function (Builder $query) {
+                                    return $query
+                                        ->where('status', 'available')
+                                        ->when(
+                                            old('unit_id'),
+                                            fn ($q, $id) => $q->orWhere('id', $id)
+                                        )
+                                        ->with('property:id,name');
+                                }
                             )
                             ->getOptionLabelFromRecordUsing(fn($record) => 
                                 $record->property->name . ' - Unit ' . $record->unit_number

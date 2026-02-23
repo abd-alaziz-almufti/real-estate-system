@@ -13,6 +13,21 @@ use Carbon\Carbon;
 class Lease extends Model
 {
     use SoftDeletes;
+    
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($lease) {
+            // Automatically set company_id from the unit's property
+            if (!$lease->company_id && $lease->unit_id) {
+                $unit = Unit::with('property')->find($lease->unit_id);
+                if ($unit && $unit->property) {
+                    $lease->company_id = $unit->property->company_id;
+                }
+            }
+        });
+    }
 
     protected $fillable = [
         'company_id',

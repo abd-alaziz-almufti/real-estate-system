@@ -46,10 +46,7 @@ class Unit extends Model
         return $this->hasMany(Lease::class);
     }
 
-    public function rentalRequests(): HasMany
-    {
-        return $this->hasMany(RentalRequest::class);
-    }
+
 
     /**
      * Polymorphic: all images belonging to this unit.

@@ -13,7 +13,8 @@ return new class extends Migration
             $table->foreignId('property_id')->constrained('properties')->onDelete('cascade');
             $table->string('unit_number');
             $table->decimal('rent_price', 10, 2);
-            $table->enum('status', ['available', 'occupied', 'maintenance', 'reserved'])->default('available');
+            $table->enum('status', ['available', 'occupied', 'maintenance', 'reserved'])
+                ->default('available');
             $table->string('type')->nullable(); // e.g. apartment, studio, villa, office
             $table->timestamps();
 

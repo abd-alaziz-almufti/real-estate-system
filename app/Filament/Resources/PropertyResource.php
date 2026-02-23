@@ -71,6 +71,35 @@ class PropertyResource extends Resource
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
+
+            Forms\Components\Section::make('Gallery')
+                ->description('Add images for this property')
+                ->schema([
+                    Forms\Components\Repeater::make('images')
+                        ->relationship('images')
+                        ->schema([
+                            Forms\Components\FileUpload::make('path')
+                                ->label('Photo')
+                                ->image()
+                                ->imageEditor()
+                                ->directory('images/properties')
+                                ->disk('public')
+                                ->maxSize(5120)
+                                ->required(),
+                            Forms\Components\Toggle::make('is_primary')
+                                ->label('Primary')
+                                ->default(false),
+                            Forms\Components\TextInput::make('order')
+                                ->numeric()
+                                ->default(0),
+                        ])
+                        ->grid(2)
+                        ->defaultItems(0)
+                        ->collapsible()
+                        ->itemLabel(fn (array $state): ?string => is_string($state['path'] ?? null) ? $state['path'] : null)
+                        ->columnSpanFull(),
+                ])
+                ->collapsible(),
         ]);
     }
 
