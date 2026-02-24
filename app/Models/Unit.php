@@ -46,6 +46,11 @@ class Unit extends Model
         return $this->hasMany(Lease::class);
     }
 
+    public function features(): HasMany
+    {
+        return $this->hasMany(UnitFeature::class);
+    }
+
 
 
     /**

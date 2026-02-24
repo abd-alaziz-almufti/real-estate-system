@@ -24,6 +24,8 @@ class UnitResource extends Resource
             ->with([
                 'property:id,name',
                 'primaryImage:id,imageable_type,imageable_id,path',
+                'features',
+                'maintenanceRequests',
             ]);
     }
 
@@ -201,6 +203,8 @@ class UnitResource extends Resource
     public static function getRelations(): array
     {
         return [
+            RelationManagers\FeaturesRelationManager::class,
+            RelationManagers\MaintenanceRequestsRelationManager::class,
             RelationManagers\ImagesRelationManager::class,
         ];
     }

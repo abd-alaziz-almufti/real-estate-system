@@ -45,6 +45,19 @@ class ViewUnit extends ViewRecord
                                         ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
                                         ->weight('bold')
                                         ->icon('heroicon-m-hashtag'),
+
+                                    Infolists\Components\TextEntry::make('maintenance_status')
+                                        ->label('Maintenance Alerts')
+                                        ->default(function ($record) {
+                                            $count = $record->maintenanceRequests
+                                                ->whereIn('priority', ['high', 'emergency'])
+                                                ->whereNotIn('status', ['resolved', 'cancelled'])
+                                                ->count();
+                                            return $count > 0 ? "$count Urgent Request(s)" : "No Urgent Issues";
+                                        })
+                                        ->color(fn ($state) => str_contains($state, 'Urgent') ? 'danger' : 'success')
+                                        ->icon(fn ($state) => str_contains($state, 'Urgent') ? 'heroicon-m-exclamation-triangle' : 'heroicon-m-check-badge')
+                                        ->visible(fn ($record) => $record->maintenanceRequests()->exists()),
                                     
                                     Infolists\Components\TextEntry::make('property.name')
                                         ->label('Property')
@@ -76,6 +89,26 @@ class ViewUnit extends ViewRecord
                                             'info' => 'reserved',
                                         ]),
                                 ])->columns(1),
+
+                            Infolists\Components\Section::make('Amenities')
+                                ->description('Unit-specific features')
+                                ->schema([
+                                    Infolists\Components\RepeatableEntry::make('features')
+                                        ->label('')
+                                        ->schema([
+                                            Infolists\Components\TextEntry::make('name')
+                                                ->label('')
+                                                ->size(Infolists\Components\TextEntry\TextEntrySize::Small)
+                                                ->weight('bold')
+                                                ->badge()
+                                                ->color('info')
+                                                ->icon('heroicon-o-check-circle')
+                                                ->formatStateUsing(fn ($state, $record) => $record->value ? "$state: {$record->value}" : $state),
+                                        ])
+                                        ->grid(2)
+                                ])
+                                ->collapsible()
+                                ->visible(fn ($record) => $record->features()->exists()),
                         ])->columnSpan(1),
                     ]),
             ]);
