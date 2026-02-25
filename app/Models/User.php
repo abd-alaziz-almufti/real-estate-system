@@ -64,10 +64,10 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === 'property_manager';
     }
 
-    public function isTenant(): bool
-    {
-        return $this->role === 'tenant';
-    }
+    // public function isTenant(): bool
+    // {
+    //     return $this->role === 'tenant';
+    // }
     // app/Models/User.php
 
 public function leasesAsTenant(): HasMany
@@ -83,5 +83,14 @@ public function currentLease(): HasOne
 public function payments(): HasManyThrough
 {
     return $this->hasManyThrough(Payment::class, Lease::class, 'tenant_id', 'lease_id');
+}
+public function tenant(): HasOne
+{
+    return $this->hasOne(Tenant::class);
+}
+
+public function isTenant(): bool
+{
+    return $this->role === 'tenant' && $this->tenant()->exists();
 }
 }
