@@ -53,6 +53,7 @@ class TenantResource extends Resource
                 // 🔥 SECTION 1: Basic Information (saves to users table)
                 Forms\Components\Section::make('Basic Information')
                     ->description('This information will be saved in the user account')
+                    // ->relationship('user')
                     ->schema([
                         Forms\Components\TextInput::make('user.name')
                             ->label('Full Name')
@@ -98,14 +99,27 @@ class TenantResource extends Resource
                             ),
 
                         // 🔥 Hidden fields (auto-filled)
-                        Forms\Components\Hidden::make('user.company_id')
-                            ->default(fn() => auth()->user()->company_id),
+                        // Forms\Components\Hidden::make('user.company_id')
+                        //     ->default(fn() => auth()->user()->company_id),
+                        Forms\Components\Select::make('user.company_id')
+                        ->label('Company')
+                        ->relationship('company', 'name') // لازم علاقة company() في User Model
+                        ->searchable()
+                        ->preload()
+                        ->required(fn() => auth()->user()->role === 'super_admin')
+                        ->visible(fn() => auth()->user()->role === 'super_admin') 
+                        ->default(fn() => auth()->user()->company_id ?? null),
+
+                         Forms\Components\Hidden::make('user.company_id')
+                      ->default(fn() => auth()->user()->company_id)
+                        ->visible(fn() => auth()->user()->role !== 'super_admin')
+                        ->dehydrated(),
 
                         Forms\Components\Hidden::make('user.role')
                             ->default('tenant'),
 
-                        Forms\Components\Hidden::make('company_id')
-                            ->default(fn() => auth()->user()->company_id),
+                        // Forms\Components\Hidden::make('company_id')
+                        //     ->default(fn() => auth()->user()->company_id),
                     ])
                     ->columns(2),
 

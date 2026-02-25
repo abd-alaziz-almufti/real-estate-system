@@ -42,6 +42,7 @@ class Tenant extends Model
         'background_check_notes',
         'status',
         'notes',
+        'company_id', 
     ];
 
     protected $casts = [
