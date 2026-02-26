@@ -43,7 +43,7 @@ class TenantResource extends Resource
             // Instead of loading all leases + all payments (heavy!)
             // Let database do the aggregation (fast!)
             // ->withSum('leases.payments as total_paid', 'paid_amount')
-            ;
+        ;
     }
 
     public static function form(Form $form): Form
@@ -72,10 +72,18 @@ class TenantResource extends Resource
                             ->label('Email')
                             ->email()
                             ->required()
-                            ->unique(User::class, 'email', ignoreRecord: true)
-                            ->maxLength(255)
+                            ->unique(
+                                table: User::class,
+                                column: 'email',
+                                ignoreRecord: true,
+                                modifyRuleUsing: function ($rule, $record) {
+                                    // إذا كنا في حالة تعديل، تجاهل إيميل المستخدم الحالي المرتبط بهذا المستأجر
+                                    return $record ? $rule->ignore($record->user_id) : $rule;
+                                }
+                            )->maxLength(255)
                             ->live(debounce: 500)
-                            ->afterStateUpdated(fn($state, Forms\Set $set) => 
+                            ->afterStateUpdated(
+                                fn($state, Forms\Set $set) =>
                                 $set('user.email', strtolower($state))
                             ),
 
@@ -92,9 +100,10 @@ class TenantResource extends Resource
                             ->required(fn(string $context) => $context === 'create')
                             ->dehydrated(fn($state) => filled($state))
                             ->minLength(8)
-                            ->helperText(fn(string $context) => 
-                                $context === 'create' 
-                                    ? 'Tenant will use this to login' 
+                            ->helperText(
+                                fn(string $context) =>
+                                $context === 'create'
+                                    ? 'Tenant will use this to login'
                                     : 'Leave empty to keep current password'
                             ),
 
@@ -102,24 +111,32 @@ class TenantResource extends Resource
                         // Forms\Components\Hidden::make('user.company_id')
                         //     ->default(fn() => auth()->user()->company_id),
                         Forms\Components\Select::make('user.company_id')
-                        ->label('Company')
-                        ->relationship('company', 'name') // لازم علاقة company() في User Model
-                        ->searchable()
-                        ->preload()
-                        ->required(fn() => auth()->user()->role === 'super_admin')
-                        ->visible(fn() => auth()->user()->role === 'super_admin') 
-                        ->default(fn() => auth()->user()->company_id ?? null),
+                            ->label('Company')
+                            ->relationship('company', 'name') // لازم علاقة company() في User Model
+                            ->searchable()
+                            ->preload()
+                            ->required(fn() => auth()->user()->role === 'super_admin')
+                            ->visible(fn() => auth()->user()->role === 'super_admin')
+                            ->default(fn() => auth()->user()->company_id ?? null),
 
-                         Forms\Components\Hidden::make('user.company_id')
-                      ->default(fn() => auth()->user()->company_id)
-                        ->visible(fn() => auth()->user()->role !== 'super_admin')
-                        ->dehydrated(),
+                        Forms\Components\Hidden::make('user.company_id')
+                            ->default(fn() => auth()->user()->company_id)
+                            ->visible(fn() => auth()->user()->role !== 'super_admin')
+                            ->dehydrated(),
 
                         Forms\Components\Hidden::make('user.role')
                             ->default('tenant'),
 
+
                         // Forms\Components\Hidden::make('company_id')
                         //     ->default(fn() => auth()->user()->company_id),
+                        Forms\Components\FileUpload::make('avatar')
+                            ->label('Tenant Photo')
+                            ->image()
+                            ->avatar()
+                            ->directory('tenants-avatars')
+                            ->imageEditor()
+                        // ->columnSpanFull(),
                     ])
                     ->columns(2),
 
@@ -284,13 +301,15 @@ class TenantResource extends Resource
                             ->live(),
 
                         Forms\Components\DatePicker::make('background_check_date')
-                            ->visible(fn(Forms\Get $get) => 
+                            ->visible(
+                                fn(Forms\Get $get) =>
                                 in_array($get('background_check_status'), ['approved', 'rejected'])
                             )
                             ->native(false),
 
                         Forms\Components\Textarea::make('background_check_notes')
-                            ->visible(fn(Forms\Get $get) => 
+                            ->visible(
+                                fn(Forms\Get $get) =>
                                 in_array($get('background_check_status'), ['approved', 'rejected'])
                             )
                             ->rows(2)
@@ -328,6 +347,9 @@ class TenantResource extends Resource
                     ->label('ID')
                     ->sortable()
                     ->searchable(),
+                Tables\Columns\ImageColumn::make('avatar')
+                    ->circular()
+                    ->defaultImageUrl(fn($record) => "https://ui-avatars.com/api/?name=" . urlencode($record->user->name) . "&background=0D8ABC&color=fff"),
 
                 // 🔥 WHY: user.name is already eager loaded - zero extra queries
                 Tables\Columns\TextColumn::make('user.name')
@@ -425,8 +447,11 @@ class TenantResource extends Resource
 
                 Tables\Filters\Filter::make('has_active_lease')
                     ->label('Has Active Lease')
-                    ->query(fn(Builder $query) => 
-                        $query->whereHas('user.leasesAsTenant', fn($q) => 
+                    ->query(
+                        fn(Builder $query) =>
+                        $query->whereHas(
+                            'user.leasesAsTenant',
+                            fn($q) =>
                             $q->where('status', 'active')
                         )
                     )
