@@ -1,35 +1,66 @@
 <?php
+// app/Filament/Resources/TenantResource/Pages/CreateTenant.php
 
 namespace App\Filament\Resources\TenantResource\Pages;
 
 use App\Filament\Resources\TenantResource;
-use Filament\Actions;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class CreateTenant extends CreateRecord
 {
     protected static string $resource = TenantResource::class;
-    // app/Filament/Resources/TenantResource/Pages/CreateTenant.php
 
-protected function handleRecordCreation(array $data): \Illuminate\Database\Eloquent\Model
-{
-    // 1. Extract user data
-    $userData = $data['user'];
-    unset($data['user']); // Remove user data from tenant array
-
-    // 2. Hash password
-    if (isset($userData['password'])) {
-        $userData['password'] = \Illuminate\Support\Facades\Hash::make($userData['password']);
+    // 🔥 CRITICAL: Custom creation logic
+    // WHY: We need to create User FIRST, then Tenant
+    protected function handleRecordCreation(array $data): Model
+    {
+        // ✅ WHY: Use database transaction for safety
+        // If User creation fails, Tenant won't be created (data integrity)
+        // If Tenant creation fails, User will be rolled back (no orphans)
+        return DB::transaction(function () use ($data) {
+            
+            // STEP 1: Extract user data from form
+            // WHY: Form has nested structure: $data['user']['name']
+            // We need to separate user data from tenant data
+            $userData = $data['user'];
+            unset($data['user']); // Remove user data from tenant array
+            
+            // STEP 2: Hash password (security)
+            // WHY: Never store plain text passwords in database
+            if (isset($userData['password'])) {
+                $userData['password'] = Hash::make($userData['password']);
+            }
+            
+            // STEP 3: Create User first
+            // WHY: We need user.id to link tenant
+            $user = \App\Models\User::create($userData);
+            
+            // STEP 4: Link tenant to user
+            // WHY: Tenant table has user_id foreign key
+            $data['user_id'] = $user->id;
+            
+            // STEP 5: Ensure tenant belongs to same company as user
+            // WHY: Multi-tenancy - tenant must be in same company as user
+            // This prevents company A admin from creating tenant in company B
+            $data['company_id'] = $user->company_id;
+            
+            // STEP 6: Create Tenant
+            return static::getModel()::create($data);
+        });
     }
 
-    // 3. Create User
-    $user = \App\Models\User::create($userData);
+    // 🔥 PERFORMANCE: No page reload
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 
-    // 4. Create Tenant and link to user
-    $data['user_id'] = $user->id;
-    // Ensure tenant also belongs to the same company
-    $data['company_id'] = $user->company_id; 
-
-    return static::getModel()::create($data);
-}
+    // 🔥 UX: Success message
+    protected function getCreatedNotificationTitle(): ?string
+    {
+        return 'Tenant created successfully';
+    }
 }
