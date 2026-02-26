@@ -70,9 +70,22 @@ class User extends Authenticatable implements FilamentUser
     // }
     // app/Models/User.php
 
-public function leasesAsTenant(): HasMany
+// public function leasesAsTenant(): HasMany
+// {
+//     return $this->hasMany(Lease::class, 'tenant_id');
+// }
+// app/Models/User.php
+
+public function leasesAsTenant(): HasManyThrough
 {
-    return $this->hasMany(Lease::class, 'tenant_id');
+    return $this->hasManyThrough(
+        Lease::class, 
+        Tenant::class, 
+        'user_id',   
+        'tenant_id',
+        'id',        
+        'id'         
+    );
 }
 
 public function currentLease(): HasOne
