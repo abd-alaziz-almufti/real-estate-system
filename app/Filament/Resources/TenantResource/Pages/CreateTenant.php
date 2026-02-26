@@ -5,60 +5,89 @@ namespace App\Filament\Resources\TenantResource\Pages;
 
 use App\Filament\Resources\TenantResource;
 use Filament\Resources\Pages\CreateRecord;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class CreateTenant extends CreateRecord
 {
     protected static string $resource = TenantResource::class;
 
-    // 🔥 CRITICAL: Custom creation logic
-    // WHY: We need to create User FIRST, then Tenant
     protected function handleRecordCreation(array $data): Model
     {
-        // ✅ WHY: Use database transaction for safety
-        // If User creation fails, Tenant won't be created (data integrity)
-        // If Tenant creation fails, User will be rolled back (no orphans)
-        return DB::transaction(function () use ($data) {
-            
-            // STEP 1: Extract user data from form
-            // WHY: Form has nested structure: $data['user']['name']
-            // We need to separate user data from tenant data
-            $userData = $data['user'];
-            unset($data['user']); // Remove user data from tenant array
-            
-            // STEP 2: Hash password (security)
-            // WHY: Never store plain text passwords in database
-            if (isset($userData['password'])) {
-                $userData['password'] = Hash::make($userData['password']);
-            }
-            
-            // STEP 3: Create User first
-            // WHY: We need user.id to link tenant
-            $user = \App\Models\User::create($userData);
-            
-            // STEP 4: Link tenant to user
-            // WHY: Tenant table has user_id foreign key
-            $data['user_id'] = $user->id;
-            
-            // STEP 5: Ensure tenant belongs to same company as user
-            // WHY: Multi-tenancy - tenant must be in same company as user
-            // This prevents company A admin from creating tenant in company B
-            $data['company_id'] = $user->company_id;
-            
-            // STEP 6: Create Tenant
-            return static::getModel()::create($data);
-        });
+        try {
+            return DB::transaction(function () use ($data) {
+                // ✅ Validate user data exists
+                if (!isset($data['user'])) {
+                    throw new \Exception('User data is required');
+                }
+
+                // Extract user data
+                $userData = $data['user'];
+                unset($data['user']);
+
+                // ✅ Hash password
+                if (isset($userData['password'])) {
+                    $userData['password'] = Hash::make($userData['password']);
+                } else {
+                    // ✅ Default password if none provided
+                    $userData['password'] = Hash::make('password123');
+                }
+
+                // ✅ Ensure role is always tenant
+                $userData['role'] = 'tenant';
+
+                // ✅ Create User
+                $user = \App\Models\User::create($userData);
+
+                // ✅ Link tenant to user and company
+                $data['user_id'] = $user->id;
+                $data['company_id'] = $user->company_id;
+
+                // ✅ Validate required fields
+                if (empty($data['user_id']) || empty($data['company_id'])) {
+                    throw new \Exception('User ID or Company ID is missing');
+                }
+
+                // ✅ Create Tenant
+                $tenant = static::getModel()::create($data);
+
+                // ✅ Log success (helpful for debugging)
+                Log::info('Tenant created', [
+                    'tenant_id' => $tenant->id,
+                    'user_id' => $user->id,
+                    'company_id' => $user->company_id,
+                ]);
+
+                return $tenant;
+            });
+
+        } catch (\Exception $e) {
+            // ✅ Show error to user
+            Notification::make()
+                ->title('Error creating tenant')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
+
+            // ✅ Log error for debugging
+            Log::error('Tenant creation failed', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+            ]);
+
+            // ✅ Re-throw to stop creation
+            throw $e;
+        }
     }
 
-    // 🔥 PERFORMANCE: No page reload
     protected function getRedirectUrl(): string
     {
         return $this->getResource()::getUrl('index');
     }
 
-    // 🔥 UX: Success message
     protected function getCreatedNotificationTitle(): ?string
     {
         return 'Tenant created successfully';
