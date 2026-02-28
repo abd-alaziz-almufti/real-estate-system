@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tenants', function (Blueprint $table) {
+        Schema::table('leases', function (Blueprint $table) {
               // Drop old foreign key (if exists)
             $table->dropForeign(['tenant_id']);
             
