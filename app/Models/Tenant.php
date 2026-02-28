@@ -78,6 +78,18 @@ class Tenant extends Model
 {
     return $this->hasMany(Lease::class, 'tenant_id');
 }
+// ✅ 4. Tenant → Payments (THROUGH Leases)
+public function payments(): HasManyThrough
+{
+    return $this->hasManyThrough(
+        Payment::class,      // Final model
+        Lease::class,        // Intermediate model
+        'tenant_id',         // Foreign key on leases table
+        'lease_id',          // Foreign key on payments table
+        'id',                // Local key on tenants table
+        'id'                 // Local key on leases table
+    );
+}
 
     // 🔥 Scopes
     public function scopeActive($query)
