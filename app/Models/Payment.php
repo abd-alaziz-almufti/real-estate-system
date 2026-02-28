@@ -50,6 +50,17 @@ class Payment extends Model
     {
         return $this->morphMany(Document::class, 'documentable');
     }
+     public function tenant(): HasOneThrough
+   {
+       return $this->hasOneThrough(
+           Tenant::class,
+           Lease::class,
+           'id',          // Foreign key on leases
+           'id',          // Foreign key on tenants
+           'lease_id',    // Local key on payments
+           'tenant_id'    // Local key on leases
+       );
+   }
 
     // Scopes
     public function scopePending($query)
