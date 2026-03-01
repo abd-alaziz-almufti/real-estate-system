@@ -38,7 +38,7 @@ class LeaseSeeder extends Seeder
             ]);
 
             // Update unit status
-            $unit->update(['status' => 'rented']);
+            $unit->update(['status' => 'occupied']);
 
             // Generate payment schedule
             $lease->generatePaymentSchedule();

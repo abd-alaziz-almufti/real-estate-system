@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Tenant extends Model
 {
@@ -95,20 +96,28 @@ class Tenant extends Model
     {
         return $this->hasMany(RentalRequest::class);
     }
+    // ✅ In Tenant.php — makes perfect sense
+public function currentLease(): HasOne
+{
+    return $this->hasOne(Lease::class, 'tenant_id')
+        ->where('status', 'active')
+        ->latest();
+}
     // 🔥 Scopes
     public function scopeActive($query)
     {
         return $query->where('status', 'active');
     }
 
-    public function scopeWithCurrentLease($query)
-    {
-        return $query->whereHas(
-            'user.leasesAsTenant',
-            fn($q) =>
-            $q->where('status', 'active')
-        );
-    }
+    // public function scopeWithCurrentLease($query)
+    // {
+    //     return $query->whereHas(
+    //         'user.leasesAsTenant',
+    //         fn($q) =>
+    //         $q->where('status', 'active')
+    //     );
+    // }
+    
 
     // 🔥 Accessors
     public function getCurrentLeaseAttribute()
