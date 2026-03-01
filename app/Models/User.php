@@ -93,10 +93,10 @@ public function currentLease(): HasOne
     return $this->hasOne(Lease::class, 'tenant_id')->where('status', 'active');
 }
 
-public function payments(): HasManyThrough
-{
-    return $this->hasManyThrough(Payment::class, Lease::class, 'tenant_id', 'lease_id');
-}
+// public function payments(): HasManyThrough
+// {
+//     return $this->hasManyThrough(Payment::class, Lease::class, 'tenant_id', 'lease_id');
+// }
 public function tenant(): HasOne
 {
     return $this->hasOne(Tenant::class);
