@@ -35,9 +35,9 @@ class DocumentResource extends Resource
                 documents.*,
                 CONCAT('/storage/', file_path) as file_url_computed
             ");
-            // 🎯 EXPLANATION: Instead of calling Storage::url() 50 times (50 disk I/O operations)
-            // We compute the URL in SQL once during query. Database concatenation is INSTANT.
-            // For 50 documents: 50ms → 0ms = ∞% faster!
+        // 🎯 EXPLANATION: Instead of calling Storage::url() 50 times (50 disk I/O operations)
+        // We compute the URL in SQL once during query. Database concatenation is INSTANT.
+        // For 50 documents: 50ms → 0ms = ∞% faster!
     }
 
     public static function form(Form $form): Form
@@ -141,22 +141,20 @@ class DocumentResource extends Resource
                             ->preload()
                             ->options(function (Forms\Get $get) {
                                 $type = $get('documentable_type');
-                                
+
                                 if (!$type) {
                                     return [];
                                 }
 
                                 // 🔥 PERFORMANCE: Load options based on type
                                 // WHY: Only load relevant records, not everything
-                                return match($type) {
+                                return match ($type) {
                                     'App\Models\Lease' => \App\Models\Lease::query()
-                                        ->with(['unit.property', 'tenant']) // ✅ Eager load for display
-                                        ->limit(100) // ✅ Limit results
-                                        ->get()
+                                        ->with(['unit.property', 'tenant.user'])
                                         ->mapWithKeys(fn($lease) => [
-                                            $lease->id => "Lease #{$lease->id} - {$lease->tenant->name}"
+                                            $lease->id => "Lease #{$lease->id} - " . ($lease->tenant->user->name ?? 'N/A')
                                         ]),
-                                    
+
                                     'App\Models\Payment' => \App\Models\Payment::query()
                                         ->with(['lease.tenant']) // ✅ Eager load
                                         ->limit(100)
@@ -164,7 +162,7 @@ class DocumentResource extends Resource
                                         ->mapWithKeys(fn($payment) => [
                                             $payment->id => "Payment #{$payment->id} - \${$payment->amount}"
                                         ]),
-                                    
+
                                     'App\Models\Property' => \App\Models\Property::pluck('name', 'id'),
                                     'App\Models\Unit' => \App\Models\Unit::pluck('unit_number', 'id'),
                                     default => [],
@@ -192,7 +190,8 @@ class DocumentResource extends Resource
                     ->disk('public')
                     ->visibility('public')
                     ->size(50)
-                    ->defaultImageUrl(fn($record) => 
+                    ->defaultImageUrl(
+                        fn($record) =>
                         // ✅ WHY: Show icon for non-images instead of broken image
                         $record->is_pdf ? asset('images/pdf-icon.png') : null
                     )
@@ -309,13 +308,13 @@ class DocumentResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
-                
+
                 // 🔥 Quick download action
                 Tables\Actions\Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->action(function($record) {
+                    ->action(function ($record) {
                         // ✅ WHY: Use model method - encapsulates business logic
                         return $record->download();
                     }),

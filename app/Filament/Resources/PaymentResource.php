@@ -100,7 +100,7 @@ class PaymentResource extends Resource
                                                 $q->where('name', 'like', "%{$search}%")
                                             );
                                     })
-                                    ->with(['unit.property', 'tenant']) // ✅ Eager load for display
+                                    ->with(['unit.property', 'tenant.user']) // ✅ Eager load for display
                                     ->limit(50) // ✅ PERFORMANCE: Limit results
                                     ->get()
                                     ->mapWithKeys(fn($lease) => [
