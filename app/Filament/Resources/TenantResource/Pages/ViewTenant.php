@@ -25,7 +25,7 @@ class ViewTenant extends ViewRecord
             'company:id,name',                         // ✅ DIRECT company relationship
             'leases.unit.property', 
             'payments' => function($query) {
-                $query->where('status', 'paid'); // Only load paid payments for the total
+                $query->where('payments.status', 'paid'); // Only load paid payments for the total
             },
                               // Lease details
         ]);
