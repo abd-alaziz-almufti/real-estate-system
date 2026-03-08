@@ -284,7 +284,7 @@ class PaymentResource extends Resource
                     ->color('success'),
 
                 Tables\Columns\TextColumn::make('remaining_amount')
-                    ->label('Remaining after this payment')
+                    ->label('Remaining')
                     ->money('USD')
                     ->sortable()
                     ->color(fn($state) => $state > 0 ? 'danger' : 'success'),
