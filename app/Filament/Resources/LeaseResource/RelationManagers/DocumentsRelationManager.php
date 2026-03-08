@@ -82,9 +82,9 @@ class DocumentsRelationManager extends RelationManager
                 Tables\Actions\Action::make('download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('success')
-                    ->action(function ($record) {
-        return Storage::disk('public')->download($record->file_path);
-    }),
+                    ->url(fn($record) => asset('storage/' . $record->file_path))
+->openUrlInNewTab()
+                    ->visible(fn($record) => Storage::disk('public')->exists($record->file_path)),
                 
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),

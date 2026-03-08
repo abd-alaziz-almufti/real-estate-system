@@ -250,9 +250,26 @@ class DocumentResource extends Resource
                     ->badge()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('documentable_id')
-                    ->label('Record ID')
-                    ->toggleable(),
+                 // 🔥 FIX: Show tenant/user name instead of just Record ID
+                Tables\Columns\TextColumn::make('related_to')
+                    ->label('Related To')
+                    ->state(function ($record) {
+                        $related = $record->documentable;
+                        
+                        if (!$related) {
+                            return '—';
+                        }
+                        
+                        return match (class_basename($related)) {
+                            'Lease' => '📄 Lease: ' . ($related->tenant->user->name ?? 'Unknown Tenant'),
+                            'Payment' => '💰 Payment: $' . number_format($related->amount, 2),
+                            'Property' => '🏠 Property: ' . $related->name,
+                            'Unit' => '🏡 Unit: ' . $related->unit_number,
+                            default => class_basename($related) . ' #' . $record->documentable_id,
+                        };
+                    })
+                    ->searchable(false)
+                    ->wrap(),
 
                 Tables\Columns\TextColumn::make('uploadedBy.name')
                     ->label('Uploaded By')
