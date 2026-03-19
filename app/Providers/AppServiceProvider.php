@@ -12,7 +12,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+                Payment::observe(PaymentObserver::class);
+
     }
 
     /**
