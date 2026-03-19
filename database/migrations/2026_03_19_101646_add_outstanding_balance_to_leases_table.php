@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('leases', function (Blueprint $table) {
-            //
+             // Add outstanding_balance column to track total unpaid amount
+            $table->decimal('outstanding_balance', 10, 2)->default(0)->after('rent_amount');
         });
     }
 
