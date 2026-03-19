@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use App\Observers\PaymentObserver;
+
 
 class AppServiceProvider extends ServiceProvider
 {
