@@ -7,6 +7,8 @@ use App\Models\Employee;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Infolists;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -32,7 +34,6 @@ class EmployeeResource extends Resource
     {
         return $form
             ->schema([
-                // SECTION 1: Account Information (saves to users table)
                 Forms\Components\Section::make('Account Information')
                     ->description('Login credentials for this employee')
                     ->schema([
@@ -84,7 +85,6 @@ class EmployeeResource extends Resource
                             ->required()
                             ->native(false),
 
-                        // Company assignment (super admin sees selector, others get auto-fill)
                         Forms\Components\Select::make('user.company_id')
                             ->label('Company')
                             ->relationship('company', 'name')
@@ -108,7 +108,6 @@ class EmployeeResource extends Resource
                     ])
                     ->columns(2),
 
-                // SECTION 2: Employment Details (saves to employees table)
                 Forms\Components\Section::make('Employment Details')
                     ->schema([
                         Forms\Components\TextInput::make('employee_id')
@@ -148,7 +147,6 @@ class EmployeeResource extends Resource
                     ])
                     ->columns(2),
 
-                // SECTION 3: Emergency Contact
                 Forms\Components\Section::make('Emergency Contact')
                     ->schema([
                         Forms\Components\TextInput::make('emergency_contact_name')
@@ -165,7 +163,6 @@ class EmployeeResource extends Resource
                     ->columns(3)
                     ->collapsible(),
 
-                // SECTION 4: Status & Notes
                 Forms\Components\Section::make('Additional Information')
                     ->schema([
                         Forms\Components\Select::make('status')
@@ -181,6 +178,131 @@ class EmployeeResource extends Resource
 
                         Forms\Components\Textarea::make('notes')
                             ->rows(3)
+                            ->columnSpanFull(),
+                    ])
+                    ->collapsible(),
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                Infolists\Components\Section::make()
+                    ->schema([
+                        Infolists\Components\Split::make([
+                            Infolists\Components\Group::make([
+                                Infolists\Components\ImageEntry::make('avatar')
+                                    ->circular()
+                                    ->size(120)
+                                    ->defaultImageUrl(fn($record) => 
+                                        "https://ui-avatars.com/api/?name=" . urlencode($record->user->name ?? 'E') . 
+                                        "&size=200&background=6366f1&color=fff&bold=true"
+                                    ),
+                            ]),
+
+                            Infolists\Components\Group::make([
+                                Infolists\Components\TextEntry::make('user.name')
+                                    ->label('Full Name')
+                                    ->size(Infolists\Components\TextEntry\TextEntrySize::Large)
+                                    ->weight('bold')
+                                    ->icon('heroicon-m-user')
+                                    ->color('primary'),
+
+                                Infolists\Components\TextEntry::make('user.email')
+                                    ->label('Email')
+                                    ->icon('heroicon-m-envelope')
+                                    ->copyable(),
+
+                                Infolists\Components\TextEntry::make('user.phone')
+                                    ->label('Phone')
+                                    ->icon('heroicon-m-phone')
+                                    ->placeholder('—')
+                                    ->copyable(),
+
+                                Infolists\Components\TextEntry::make('user.role')
+                                    ->label('System Role')
+                                    ->badge()
+                                    ->colors([
+                                        'danger' => 'super_admin',
+                                        'warning' => 'company_admin',
+                                        'success' => 'property_manager',
+                                    ])
+                                    ->formatStateUsing(fn(string $state): string =>
+                                        str_replace('_', ' ', ucwords($state, '_'))
+                                    ),
+                            ])->columns(2),
+                        ])->from('md'),
+                    ])
+                    ->columnSpanFull(),
+
+                Infolists\Components\Section::make('Employment Details')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('employee_id')
+                            ->label('Employee ID')
+                            ->badge()
+                            ->color('info')
+                            ->placeholder('—'),
+
+                        Infolists\Components\TextEntry::make('position')
+                            ->label('Position')
+                            ->placeholder('—'),
+
+                        Infolists\Components\TextEntry::make('department')
+                            ->badge()
+                            ->formatStateUsing(fn(?string $state) => $state ? ucwords(str_replace('_', ' ', $state)) : '—'),
+
+                        Infolists\Components\TextEntry::make('company.name')
+                            ->label('Company')
+                            ->icon('heroicon-m-building-office')
+                            ->badge()
+                            ->color('primary'),
+
+                        Infolists\Components\TextEntry::make('hire_date')
+                            ->date()
+                            ->icon('heroicon-m-calendar'),
+
+                        Infolists\Components\TextEntry::make('salary')
+                            ->money('USD')
+                            ->badge()
+                            ->color('success')
+                            ->visible(fn() => in_array(auth()->user()->role, ['super_admin', 'company_admin'])),
+                    ])
+                    ->columns(3)
+                    ->collapsible(),
+
+                Infolists\Components\Section::make('Emergency Contact')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('emergency_contact_name')
+                            ->label('Contact Name')
+                            ->placeholder('—'),
+
+                        Infolists\Components\TextEntry::make('emergency_contact_phone')
+                            ->label('Contact Phone')
+                            ->placeholder('—')
+                            ->copyable(),
+
+                        Infolists\Components\TextEntry::make('emergency_contact_relationship')
+                            ->label('Relationship')
+                            ->placeholder('—'),
+                    ])
+                    ->columns(3)
+                    ->collapsible()
+                    ->collapsed(),
+
+                Infolists\Components\Section::make('Additional Information')
+                    ->schema([
+                        Infolists\Components\TextEntry::make('status')
+                            ->badge()
+                            ->colors([
+                                'success' => 'active',
+                                'gray' => 'inactive',
+                                'warning' => 'on_leave',
+                                'danger' => 'terminated',
+                            ]),
+
+                        Infolists\Components\TextEntry::make('notes')
+                            ->placeholder('No notes added')
                             ->columnSpanFull(),
                     ])
                     ->collapsible(),
