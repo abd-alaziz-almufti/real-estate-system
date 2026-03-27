@@ -135,12 +135,13 @@ class Lease extends Model
     return max(0, $this->rent_amount - $this->total_paid);
 }
 
-    public function getTotalOutstandingAttribute(): float
-    {
-        return $this->payments()
-            ->whereIn('status', ['pending', 'overdue', 'partial'])
-            ->sum('remaining_amount');
-    }
+public function getTotalOutstandingAttribute(): float
+{
+    return $this->payments()
+        ->whereIn('status', ['pending', 'overdue', 'partial'])
+        ->get()
+        ->sum(fn($payment) => $payment->amount - $payment->paid_amount);
+}
 
     public function getDurationInMonthsAttribute(): ?int
     {
