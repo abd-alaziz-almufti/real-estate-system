@@ -142,10 +142,7 @@ class Lease extends Model
     return max(0, $this->rent_amount - $this->total_paid);
 }
 
-public function getTotalOutstandingAttribute(): float
-{
-    return max(0, $this->rent_amount - $this->total_paid);
-}
+
 
     public function getDurationInMonthsAttribute(): ?int
     {
