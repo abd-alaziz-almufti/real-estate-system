@@ -20,42 +20,40 @@ class PaymentObserver
     protected function updateLeaseBalanceAndStatus(Payment $payment): void
     {
         $lease = $payment->lease;
-        
+
         if (!$lease) return;
 
-        // ✅ حساب موحد للشهري والسنوي
-        // جمع كل amounts من الدفعات (غير الملغية)
-        $totalAmount = $lease->payments()
+        // Outstanding balance based on explicit payment amounts
+        $totalExpected = (float) $lease->payments()
             ->whereNotIn('status', ['cancelled'])
             ->sum('amount');
 
-        // جمع كل المبالغ المدفوعة
-        $totalPaid = $lease->payments()
+        $totalPaid = (float) $lease->payments()
             ->whereNotIn('status', ['cancelled'])
             ->sum('paid_amount');
 
-        // الرصيد المتبقي = إجمالي المطلوب - إجمالي المدفوع
-        $totalRemaining = max(0, $totalAmount - $totalPaid);
+        $totalRemaining = max(0, $totalExpected - $totalPaid);
 
-        // ✅ تحديد حالة العقد تلقائياً
-        $hasOverduePayments = $lease->payments()
-            ->where('status', 'overdue')
-            ->exists();
+        // Determine new lease status
+        // NOTE: Overdue payments don't change the lease status itself —
+        // that is handled separately (e.g. via markAsOverdue on individual payments).
+        // We only update outstanding_balance here; lease status should remain 'active'
+        // unless fully paid or already in a terminal state (draft/terminated/renewed).
+        $terminalStatuses = ['terminated', 'renewed', 'expired'];
 
-        if ($hasOverduePayments) {
-            $newStatus = 'defaulted';
-        } elseif ($totalRemaining <= 0 && $totalAmount > 0) {
-            $newStatus = 'paid';
+        if (in_array($lease->status, $terminalStatuses)) {
+            $newStatus = $lease->status; // Preserve terminal states, never overwrite them
+        } elseif ($totalRemaining <= 0 && $totalExpected > 0) {
+            $newStatus = 'active'; // Lease is active even when fully paid
         } elseif ($lease->status === 'draft') {
-            $newStatus = 'draft'; // حافظ على draft إذا كان draft
+            $newStatus = 'draft';
         } else {
             $newStatus = 'active';
         }
 
-        // ✅ تحديث الرصيد والحالة بدون إطلاق أحداث
         $lease->forceFill([
             'outstanding_balance' => $totalRemaining,
-            'status' => $newStatus
+            'status'              => $newStatus,
         ])->saveQuietly();
     }
 }

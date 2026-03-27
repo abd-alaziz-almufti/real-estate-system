@@ -12,10 +12,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Payment extends Model
 {
     use SoftDeletes;
+    
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::saving(function ($payment) {
+            $payment->remaining_amount = max(0, (float) ($payment->amount ?? 0) - (float) ($payment->paid_amount ?? 0));
+        });
+    }
 
     protected $fillable = [
         'lease_id',
-        // 'amount',
+        'amount',
         'due_date',
         'payment_date',
         'payment_method',
@@ -23,7 +32,7 @@ class Payment extends Model
         'check_number',
         'status',
         'paid_amount',
-        // 'remaining_amount',
+        'remaining_amount',
         'notes',
         'recorded_by',
     ];
@@ -35,6 +44,19 @@ class Payment extends Model
         'paid_amount' => 'decimal:2',
         'remaining_amount' => 'decimal:2',
     ];
+
+    /**
+     * Computed remaining amount based on current paid vs installment amount.
+     */
+    public function getRemainingAmountAttribute($value): float
+    {
+        // If the column exists and is populated, use it. Otherwise calculate.
+        if ($value !== null) {
+            return (float) $value;
+        }
+        
+        return max(0, (float) ($this->amount ?? 0) - (float) ($this->paid_amount ?? 0));
+    }
 
     // Relationships
     public function lease(): BelongsTo
@@ -88,27 +110,24 @@ class Payment extends Model
 
 public function getPaymentSummaryAttribute(): string
 {
-    // جلب العقد المرتبط
     $lease = $this->lease;
     
     if (!$lease) {
         return 'يرجى اختيار عقد أولاً';
     }
 
-    $totalContractAmount = (float) $lease->rent_amount; // أو القيمة الإجمالية للعقد حسب تسمية الحقل عندك
+    // Use outstanding_balance from lease (total contract debt)
+    $totalContractDebt = (float) ($lease->rent_amount * ($lease->payments_count ?: 1)); // Temporary fallback
+    if ($lease->outstanding_balance) {
+        $totalContractDebt = (float) $lease->outstanding_balance + (float) $lease->total_paid;
+    }
     
-    // حساب مجموع كل المبالغ المدفوعة في هذا العقد (باستثناء الدفعة الحالية إذا كانت موجودة)
-    $totalPaidSoFar = (float) $lease->payments()
-        ->where('status', 'paid')
-        ->when($this->id, fn($query) => $query->where('id', '!=', $this->id))
-        ->sum('paid_amount');
+    $totalPaidSoFar = (float) ($lease->total_paid ?? $lease->payments()->where('status', 'paid')->sum('paid_amount'));
+    $remainingBalance = max(0, $totalContractDebt - $totalPaidSoFar);
 
-    $remaining = $totalContractAmount - $totalPaidSoFar;
-
-    // إرجاع النص بالشكل الذي طلبته: 90000 - 30000 = 60000
-    return number_format($totalContractAmount, 2) . " - " . 
-           number_format($totalPaidSoFar, 2) . " = " . 
-           number_format($remaining, 2);
+    return number_format($totalContractDebt, 2) . " [Total] - " . 
+           number_format($totalPaidSoFar, 2) . " [Paid] = " . 
+           number_format($remainingBalance, 2) . " [Balance]";
 }
     public function getIsPaidAttribute(): bool
     {
@@ -132,19 +151,22 @@ public function getPaymentSummaryAttribute(): string
     // Business Logic
     public function recordPayment(float $amount, string $method, ?string $reference = null): bool
     {
-        $this->paid_amount += $amount;
-        $this->remaining_amount = $this->amount - $this->paid_amount;
+        $this->paid_amount = (float) ($this->paid_amount ?? 0) + $amount;
         $this->payment_method = $method;
         $this->reference_number = $reference;
         $this->payment_date = now();
+
+        // Check against this payment's expected amount
+        $expectedAmount = (float) ($this->amount ?? 0);
         
-        // Update status
-        if ($this->paid_amount >= $this->amount) {
+        if ($this->paid_amount >= $expectedAmount && $expectedAmount > 0) {
             $this->status = 'paid';
-            $this->remaining_amount = 0;
-        } else {
+        } elseif ($this->paid_amount > 0) {
             $this->status = 'partial';
         }
+
+        // Always update remaining_amount column for database-level queries
+        $this->remaining_amount = max(0, $expectedAmount - $this->paid_amount);
 
         return $this->save();
     }
