@@ -283,6 +283,32 @@ class LeaseResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                // ✅ Export PDF Action
+    Tables\Actions\Action::make('export_pdf')
+    ->label('Export PDF')
+    ->icon('heroicon-o-document-arrow-down')
+    ->color('success')
+    ->action(function ($record) {
+        return response()->streamDownload(function () use ($record) {
+            // Load lease with relationships
+            $lease = \App\Models\Lease::with([
+                'company',
+                'unit.property',
+                'tenant.user'
+            ])->find($record->id);
+
+            // Load company settings
+            $settings = \App\Models\CompanySetting::where('company_id', $lease->company_id)->first();
+
+            // Generate PDF
+            $pdf = \PDF::loadView('pdf.lease-contract', [
+                'lease' => $lease,
+                'settings' => $settings,
+            ]);
+
+            echo $pdf->output();
+        }, 'lease-' . str_pad($record->id, 6, '0', STR_PAD_LEFT) . '.pdf');
+    }),
                 
                 // 🔥 Custom action - Generate payments
                 Tables\Actions\Action::make('generate_payments')
