@@ -23,12 +23,28 @@ class UserResource extends Resource
     return parent::getEloquentQuery()->with(['company']);
 }
 
+    /**
+     * Reusable company field logic
+     */
+    private static function companyField(): Forms\Components\Component
+    {
+        return Forms\Components\Select::make('company_id')
+            ->label('Company')
+            ->relationship('company', 'name')
+            ->searchable()
+            ->preload()
+            ->nullable()
+            ->visible(fn () => auth()->user()->isSuperAdmin());
+    }
+
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\Section::make('User Information')
                     ->schema([
+                        self::companyField(),
+                        
                         Forms\Components\TextInput::make('name')
                             ->required()
                             ->maxLength(255),
@@ -42,13 +58,6 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
-                        
-                        Forms\Components\Select::make('company_id')
-                            ->label('Company')
-                            ->relationship('company', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
                         
                         Forms\Components\Select::make('role')
                             ->required()
