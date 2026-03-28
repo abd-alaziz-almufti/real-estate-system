@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class LeaseResource extends Resource
 {
@@ -284,18 +285,18 @@ class LeaseResource extends Resource
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 // ✅ Export PDF Action
-    Tables\Actions\Action::make('export_pdf')
-    ->label('Export PDF')
-    ->icon('heroicon-o-document-arrow-down')
-    ->color('success')
-    ->action(function ($record) {
-        return response()->streamDownload(function () use ($record) {
-            // Load lease with relationships
-            $lease = \App\Models\Lease::with([
-                'company',
-                'unit.property',
-                'tenant.user'
-            ])->find($record->id);
+                 Tables\Actions\Action::make('export_pdf')
+                 ->label('Export PDF')
+                 ->icon('heroicon-o-document-arrow-down')
+                 ->color('success')
+                 ->action(function ($record) {
+                     return response()->streamDownload(function () use ($record) {
+                         // Load lease with relationships
+                            $lease = \App\Models\Lease::with([
+                              'company',
+                              'unit.property',
+                              'tenant.user'
+                ])->find($record->id);
 
             // Load company settings
             $settings = \App\Models\CompanySetting::where('company_id', $lease->company_id)->first();
@@ -319,7 +320,6 @@ class LeaseResource extends Resource
                     ->requiresConfirmation()
                     ->action(function($record) {
                         $record->generatePaymentSchedule();
-                        
                         \Filament\Notifications\Notification::make()
                             ->title('Payment schedule generated')
                             ->success()

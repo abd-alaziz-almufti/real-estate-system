@@ -187,7 +187,7 @@ class PaymentResource extends Resource
                             ->numeric()
                             ->prefix('$')
                             ->required()
-                            ->live()
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                 $paid = (float) ($get('paid_amount') ?? 0);
                                 $due = (float) ($state ?? 0);
@@ -206,7 +206,7 @@ class PaymentResource extends Resource
                             ->label('Amount Paid')
                             ->numeric()
                             ->prefix('$')
-                            ->live(debounce: 500)
+                            ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                 $due = (float) ($get('amount') ?? 0);
                                 $set('remaining_amount', max(0, $due - (float)$state));
