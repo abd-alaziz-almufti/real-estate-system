@@ -118,11 +118,6 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('company')
-                    ->relationship('company', 'name')
-                    ->searchable()
-                    ->preload(),
-                
                 Tables\Filters\SelectFilter::make('role')
                     ->options([
                         'super_admin' => 'Super Admin',
@@ -130,6 +125,10 @@ class UserResource extends Resource
                         'property_manager' => 'Property Manager',
                         'tenant' => 'Tenant',
                     ]),
+                Tables\Filters\Filter::make('tenants_only')
+                    ->label('Tenants Only')
+                    ->query(fn ($query) => $query->tenants())
+                    ->toggle(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

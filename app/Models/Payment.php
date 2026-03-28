@@ -107,13 +107,23 @@ class Payment extends Model
         return $query->where('status', 'paid');
     }
 
+    public function scopePartial($query)
+    {
+        return $query->where('status', 'partial');
+    }
+
     public function scopeOverdue($query)
     {
         return $query->where('status', 'overdue')
             ->orWhere(function($q) {
-                $q->where('status', 'pending')
+                $q->whereIn('status', ['pending', 'partial'])
                   ->where('due_date', '<', now());
             });
+    }
+
+    public function scopeUnpaid($query)
+    {
+        return $query->whereIn('status', ['pending', 'overdue', 'partial']);
     }
 
     // Accessors

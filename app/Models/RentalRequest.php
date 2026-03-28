@@ -58,4 +58,21 @@ class RentalRequest extends Model
     {
         return $this->belongsTo(User::class, 'reviewed_by');
     }
+
+    // --- Scopes ---
+
+    public function scopePending($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('status', self::STATUS_APPROVED);
+    }
+
+    public function scopeRejected($query)
+    {
+        return $query->where('status', self::STATUS_REJECTED);
+    }
 }

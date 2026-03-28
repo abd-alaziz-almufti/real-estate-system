@@ -64,4 +64,26 @@ class Expense extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    // --- Scopes ---
+
+    public function scopePending($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('status', self::STATUS_PAID);
+    }
+
+    public function scopeByCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    public function scopeRecent($query, $days = 30)
+    {
+        return $query->where('expense_date', '>=', now()->subDays($days));
+    }
 }

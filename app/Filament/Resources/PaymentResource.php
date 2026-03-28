@@ -393,9 +393,7 @@ class PaymentResource extends Resource
 
                 Tables\Filters\Filter::make('unpaid')
                     ->label('Unpaid Only')
-                    ->query(fn(Builder $query) => 
-                        $query->whereIn('status', ['pending', 'overdue', 'partial'])
-                    )
+                    ->query(fn(Builder $query) => $query->unpaid())
                     ->toggle(),
 
                 Tables\Filters\Filter::make('date_range')

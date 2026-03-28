@@ -109,8 +109,30 @@ public function employee(): HasOne
     return $this->hasOne(Employee::class);
 }
 
-public function isTenant(): bool
-{
-    return $this->role === 'tenant' && $this->tenant()->exists();
-}
+    public function isTenant(): bool
+    {
+        return $this->role === 'tenant' && $this->tenant()->exists();
+    }
+
+    // --- Scopes ---
+
+    public function scopeByRole($query, $role)
+    {
+        return $query->where('role', $role);
+    }
+
+    public function scopeAdmins($query)
+    {
+        return $query->whereIn('role', ['super_admin', 'company_admin']);
+    }
+
+    public function scopeTenants($query)
+    {
+        return $query->where('role', 'tenant');
+    }
+
+    public function scopePropertyManagers($query)
+    {
+        return $query->where('role', 'property_manager');
+    }
 }

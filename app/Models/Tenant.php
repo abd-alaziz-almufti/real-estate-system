@@ -100,6 +100,21 @@ class Tenant extends Model
         return $query->where('status', 'active');
     }
 
+    public function scopeInactive($query)
+    {
+        return $query->where('status', 'inactive');
+    }
+
+    public function scopeBlacklisted($query)
+    {
+        return $query->where('status', 'blacklisted');
+    }
+
+    public function scopeHasActiveLease($query)
+    {
+        return $query->whereHas('leases', fn($q) => $q->where('status', 'active'));
+    }
+
     // public function scopeWithCurrentLease($query)
     // {
     //     return $query->whereHas(

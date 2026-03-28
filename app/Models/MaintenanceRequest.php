@@ -63,4 +63,26 @@ class MaintenanceRequest extends Model
     {
         return $this->morphMany(Image::class, 'imageable')->orderBy('order');
     }
+
+    // --- Scopes ---
+
+    public function scopeOpen($query)
+    {
+        return $query->whereIn('status', [self::STATUS_NEW, self::STATUS_PENDING, self::STATUS_IN_PROGRESS]);
+    }
+
+    public function scopeResolved($query)
+    {
+        return $query->where('status', self::STATUS_RESOLVED);
+    }
+
+    public function scopeHighPriority($query)
+    {
+        return $query->whereIn('priority', [self::PRIORITY_HIGH, self::PRIORITY_EMERGENCY]);
+    }
+
+    public function scopeByTechnician($query, $userId)
+    {
+        return $query->where('assigned_to_id', $userId);
+    }
 }

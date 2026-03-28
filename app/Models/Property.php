@@ -52,4 +52,11 @@ class Property extends Model
         return $this->morphOne(Image::class, 'imageable')
             ->where('is_primary', true);
     }
+
+    // --- Scopes ---
+
+    public function scopeWithUnits($query)
+    {
+        return $query->has('units');
+    }
 }

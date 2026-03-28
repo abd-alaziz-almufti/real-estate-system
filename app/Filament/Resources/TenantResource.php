@@ -443,8 +443,7 @@ class TenantResource extends Resource
 
                 Tables\Filters\Filter::make('has_active_lease')
                     ->label('Has Active Lease')
-                   ->query(fn($q) => $q->whereHas('leases', fn($q) => $q->where('status', 'active'))) // ✅ direct
-
+                    ->query(fn (Builder $query) => $query->hasActiveLease())
                     ->toggle(),
             ])
             ->actions([

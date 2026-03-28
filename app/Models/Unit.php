@@ -85,6 +85,28 @@ class Unit extends Model
         return $this->status === 'available';
     }
 
+    // --- Scopes ---
+
+    public function scopeAvailable($query)
+    {
+        return $query->where('status', 'available');
+    }
+
+    public function scopeOccupied($query)
+    {
+        return $query->where('status', 'occupied');
+    }
+
+    public function scopeMaintenance($query)
+    {
+        return $query->where('status', 'maintenance');
+    }
+
+    public function scopeByType($query, $type)
+    {
+        return $query->where('type', $type);
+    }
+
 
 public function currentLease(): HasOne
 {

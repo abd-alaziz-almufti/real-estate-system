@@ -211,10 +211,13 @@ class MaintenanceRequestResource extends Resource
                         'high' => 'High',
                         'emergency' => 'Emergency',
                     ]),
+                Tables\Filters\Filter::make('open_only')
+                    ->label('Open Only')
+                    ->query(fn (Builder $query): Builder => $query->open())
+                    ->toggle(),
                 Tables\Filters\Filter::make('my_tasks')
                     ->label('My Tasks')
-                    ->query(fn (Builder $query): Builder => $query->where('assigned_to_id', auth()->id()))
-                    ->default(false)
+                    ->query(fn (Builder $query): Builder => $query->byTechnician(auth()->id()))
                     ->toggle(),
             ])
             ->actions([

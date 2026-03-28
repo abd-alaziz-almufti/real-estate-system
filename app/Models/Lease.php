@@ -89,6 +89,11 @@ class Lease extends Model
         return $query->where('status', 'active');
     }
 
+    public function scopeDraft($query)
+    {
+        return $query->where('status', 'draft');
+    }
+
     public function scopeExpiringSoon($query, $days = 30)
     {
         return $query->where('status', 'active')
@@ -101,6 +106,11 @@ class Lease extends Model
         return $query->where('status', 'active')
             ->whereNotNull('end_date')
             ->where('end_date', '<', now());
+    }
+
+    public function scopeTerminated($query)
+    {
+        return $query->where('status', 'terminated');
     }
 
     // Accessors & Helpers

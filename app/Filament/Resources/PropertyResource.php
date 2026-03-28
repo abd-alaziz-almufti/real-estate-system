@@ -160,6 +160,11 @@ class PropertyResource extends Resource
                     ->searchable()
                     ->preload()
                     ->native(false),
+
+                Tables\Filters\Filter::make('with_units')
+                    ->label('Properties with Units')
+                    ->query(fn (Builder $query) => $query->withUnits())
+                    ->toggle(),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
