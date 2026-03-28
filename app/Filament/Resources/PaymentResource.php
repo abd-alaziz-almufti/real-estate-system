@@ -68,13 +68,13 @@ class PaymentResource extends Resource
                             ->relationship(
                                 'lease',
                                 'id',
-                                // 🔥 PERFORMANCE: Only load active leases to reduce dropdown size
-                                // WHY: No point showing 1000 expired leases in dropdown
-                                // This limits query to ~50 active leases instead of all 1000+
                                 fn(Builder $query) => $query
                                     ->where('status', 'active')
+                                    ->withSum(['payments as total_outstanding' => fn($q) => $q->where('status', '!=', 'cancelled')], 'remaining_amount')
+                                    // Only show leases where the sum of remaining amounts is > 0
+                                    // This allows selecting a lease ONLY if it has unpaid installments
+                                    ->having('total_outstanding', '>', 0)
                                     ->with([
-                                        // 'tenant:id,name'
                                         'unit.property:id,name',
                                         'tenant:id,user_id',
                                         'tenant.user:id,name',

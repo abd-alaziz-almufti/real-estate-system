@@ -39,8 +39,8 @@ class LeaseResource extends Resource
                 'payments as pending_payments_count' => fn($q) => $q->whereIn('status', ['pending', 'overdue']),
                 'documents', // ✅ Document count
             ])
-            ->withSum('payments as total_paid', 'paid_amount') // ✅ Sum in DB, not PHP
-            ->withSum('payments as total_outstanding', 'remaining_amount');
+            ->withSum(['payments as total_paid' => fn($q) => $q->where('status', '!=', 'cancelled')], 'paid_amount')
+            ->withSum(['payments as total_outstanding' => fn($q) => $q->where('status', '!=', 'cancelled')], 'remaining_amount');
     }
 
     public static function form(Form $form): Form

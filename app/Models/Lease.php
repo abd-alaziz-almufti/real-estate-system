@@ -128,19 +128,25 @@ class Lease extends Model
 
     public function getTotalPaidAttribute(): float
     {
-        // 🎯 PERFORMANCE OPTIMIZATION: 
-        // نتحقق أولاً إذا كان المجموع قد تم تحميله مسبقاً باستخدام withSum في الـ Query
-        // هذا يمنع تنفيذ استعلام إضافي (N+1) إذا كنا قد جلبنا المجموع مسبقاً
         if (array_key_exists('total_paid', $this->attributes)) {
             return (float) $this->attributes['total_paid'];
         }
 
-        return (float) $this->payments()->where('status', 'paid')->sum('paid_amount');
+        return (float) $this->payments()
+            ->where('status', '!=', 'cancelled')
+            ->sum('paid_amount');
     }
-    public function getRemainingAmountAttribute()
-{
-    return max(0, $this->rent_amount - $this->total_paid);
-}
+
+    public function getRemainingBalanceAttribute(): float
+    {
+        if (array_key_exists('total_outstanding', $this->attributes)) {
+            return (float) $this->attributes['total_outstanding'];
+        }
+
+        return (float) $this->payments()
+            ->where('status', '!=', 'cancelled')
+            ->sum('remaining_amount');
+    }
 
 
 
