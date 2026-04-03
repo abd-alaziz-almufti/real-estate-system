@@ -8,6 +8,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class RentalRequest extends Model
 {
     use \App\Traits\HasCompany;
+    
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            if (empty($model->company_id) && $model->unit_id) {
+                $unit = Unit::with('property')->find($model->unit_id);
+                if ($unit && $unit->property) {
+                    $model->company_id = $unit->property->company_id;
+                }
+            }
+        });
+    }
 
     protected $fillable = [
         'company_id',

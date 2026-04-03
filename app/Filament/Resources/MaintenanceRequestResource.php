@@ -27,6 +27,21 @@ class MaintenanceRequestResource extends Resource
             ->with(['unit.property', 'reporter', 'company', 'technician']);
     }
 
+    /**
+     * Reusable company field logic
+     */
+    private static function companyField(): Forms\Components\Component
+    {
+        return Forms\Components\Select::make('company_id')
+            ->label('Company')
+            ->relationship('company', 'name')
+            ->searchable()
+            ->preload()
+            ->required()
+            ->live()
+            ->visible(fn () => auth()->user()->isSuperAdmin());
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -36,9 +51,14 @@ class MaintenanceRequestResource extends Resource
                         Forms\Components\Group::make([
                             Forms\Components\Section::make('Issue Details')
                                 ->schema([
+                                    self::companyField(),
+                                    
                                     Forms\Components\Select::make('unit_id')
-                                        ->relationship('unit', 'unit_number', function (Builder $query) {
+                                        ->relationship('unit', 'unit_number', function (Builder $query, Forms\Get $get) {
                                             $query->with('property');
+                                            if ($get('company_id')) {
+                                                $query->where('company_id', $get('company_id'));
+                                            }
                                         })
                                         ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->property->name} - Unit {$record->unit_number}")
                                         ->searchable()
@@ -122,9 +142,6 @@ class MaintenanceRequestResource extends Resource
 
                                     Forms\Components\Hidden::make('reported_by_id')
                                         ->default(fn () => auth()->id()),
-
-                                    Forms\Components\Hidden::make('company_id')
-                                        ->default(fn () => auth()->user()->company_id),
                                 ]),
 
                             Forms\Components\Section::make('Financials')

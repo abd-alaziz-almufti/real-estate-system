@@ -47,6 +47,7 @@ class RentalRequestResource extends Resource
             ->searchable()
             ->preload()
             ->required()
+            ->live()
             ->visible(fn () => auth()->user()->isSuperAdmin());
     }
 
@@ -103,7 +104,12 @@ class RentalRequestResource extends Resource
                         ->schema([
                             Forms\Components\Select::make('unit_id')
                                 ->label('Assigned Unit (Optional)')
-                                ->relationship('unit', 'unit_number')
+                                ->relationship('unit', 'unit_number', function (Builder $query, Forms\Get $get) {
+                                    $query->with('property');
+                                    if ($get('company_id')) {
+                                        $query->where('company_id', $get('company_id'));
+                                    }
+                                })
                                 ->getOptionLabelFromRecordUsing(fn ($record) => "{$record->property->name} - Unit {$record->unit_number}")
                                 ->searchable()
                                 ->placeholder('Select a unit'),
