@@ -9,6 +9,30 @@ class Expense extends Model
 {
     use \App\Traits\HasCompany;
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->company_id)) {
+                // Try to get from property first
+                if ($model->property_id) {
+                    $property = Property::find($model->property_id);
+                    if ($property) {
+                        $model->company_id = $property->company_id;
+                    }
+                }
+                // Fallback: derive from unit -> property
+                if (empty($model->company_id) && $model->unit_id) {
+                    $unit = Unit::with('property')->find($model->unit_id);
+                    if ($unit && $unit->property) {
+                        $model->company_id = $unit->property->company_id;
+                    }
+                }
+            }
+        });
+    }
+
     protected $fillable = [
         'company_id',
         'property_id',
