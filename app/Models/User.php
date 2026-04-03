@@ -12,10 +12,11 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, \App\Traits\HasCompany;
+    use HasFactory, Notifiable, \App\Traits\HasCompany, HasRoles;
 
     protected $fillable = [
         'company_id',
@@ -41,22 +42,22 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return in_array($this->role, ['super_admin', 'company_admin', 'property_manager', 'tenant']);
+        return $this->hasAnyRole(['super_admin', 'company_admin', 'property_manager', 'financial_manager', 'tenant']);
     }
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === 'super_admin';
+        return $this->hasRole('super_admin');
     }
 
     public function isCompanyAdmin(): bool
     {
-        return $this->role === 'company_admin';
+        return $this->hasRole('company_admin');
     }
 
     public function isPropertyManager(): bool
     {
-        return $this->role === 'property_manager';
+        return $this->hasRole('property_manager');
     }
 
     // public function isTenant(): bool
@@ -111,28 +112,28 @@ public function employee(): HasOne
 
     public function isTenant(): bool
     {
-        return $this->role === 'tenant' && $this->tenant()->exists();
+        return $this->hasRole('tenant') && $this->tenant()->exists();
     }
 
     // --- Scopes ---
 
     public function scopeByRole($query, $role)
     {
-        return $query->where('role', $role);
+        return $query->role($role);
     }
 
     public function scopeAdmins($query)
     {
-        return $query->whereIn('role', ['super_admin', 'company_admin']);
+        return $query->role(['super_admin', 'company_admin']);
     }
 
     public function scopeTenants($query)
     {
-        return $query->where('role', 'tenant');
+        return $query->role('tenant');
     }
 
     public function scopePropertyManagers($query)
     {
-        return $query->where('role', 'property_manager');
+        return $query->role('property_manager');
     }
 }
