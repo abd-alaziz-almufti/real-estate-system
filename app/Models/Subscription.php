@@ -40,11 +40,29 @@ class Subscription extends Model
 
     public function isActive(): bool
     {
-        return $this->status === 'active' || $this->status === 'trialing';
+        return $this->status === 'active' || $this->status === 'trailing';
     }
 
     public function isExpired(): bool
     {
         return $this->ends_at && $this->ends_at->isPast();
+    }
+
+    /**
+     * Returns the number of days remaining until the subscription expires.
+     * Returns null if no end date is set (unlimited / lifetime).
+     * Returns 0 if already expired.
+     */
+    public function getRemainingDaysAttribute(): ?int
+    {
+        if (! $this->ends_at) {
+            return null; // No expiry = unlimited
+        }
+
+        if ($this->ends_at->isPast()) {
+            return 0; // Already expired
+        }
+
+        return (int) now()->diffInDays($this->ends_at);
     }
 }

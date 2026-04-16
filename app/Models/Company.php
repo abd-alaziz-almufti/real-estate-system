@@ -100,4 +100,36 @@ class Company extends Model
 
         return $this->employees()->count() < $limit;
     }
+
+    public function canAddUnit(): bool
+    {
+        $limit = $this->getPlanFeature('max_units');
+
+        if ($limit === null) {
+            return true; // Unlimited
+        }
+
+        // Count all units across all properties of this company
+        return $this->properties()->withCount('units')->get()->sum('units_count') < $limit;
+    }
+
+    public function canAddUser(): bool
+    {
+        $limit = $this->getPlanFeature('max_users');
+
+        if ($limit === null) {
+            return true; // Unlimited
+        }
+
+        return $this->users()->count() < $limit;
+    }
+
+    /**
+     * Check if the company's active plan includes a boolean feature.
+     * Used for feature flags like: maintenance_tracking, rental_requests, etc.
+     */
+    public function hasFeature(string $feature): bool
+    {
+        return (bool) $this->getPlanFeature($feature, false);
+    }
 }
