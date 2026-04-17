@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tenants', function (Blueprint $table) {
-            //` Remove company_id foreign key and column\\
+            // Remove company_id foreign key, its composite index, and the column
             $table->dropForeign(['company_id']);
+            $table->dropIndex(['company_id', 'status']); 
             $table->dropColumn('company_id');
 
         });

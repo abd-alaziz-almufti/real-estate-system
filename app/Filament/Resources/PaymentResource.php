@@ -70,10 +70,6 @@ class PaymentResource extends Resource
                                 'id',
                                 fn(Builder $query) => $query
                                     ->where('status', 'active')
-                                    ->withSum(['payments as total_outstanding' => fn($q) => $q->where('status', '!=', 'cancelled')], 'remaining_amount')
-                                    // Only show leases where the sum of remaining amounts is > 0
-                                    // This allows selecting a lease ONLY if it has unpaid installments
-                                    ->having('total_outstanding', '>', 0)
                                     ->with([
                                         'unit.property:id,name',
                                         'tenant:id,user_id',
