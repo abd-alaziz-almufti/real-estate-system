@@ -67,8 +67,7 @@ class PaymentObserver
         }
 
         $lease->forceFill([
-            'outstanding_balance' => $totalRemaining,
-            'status'              => $newStatus,
+            'status' => $newStatus,
         ])->saveQuietly();
     }
 }

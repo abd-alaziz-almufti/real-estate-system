@@ -31,7 +31,7 @@ class PaymentResource extends Resource
             ->with([
                 // 🎯 Select only needed columns (not all 15+ user columns)
                 // This reduces data transfer from DB to PHP by ~70%
-                'lease:id,unit_id,tenant_id,rent_amount,status,payment_frequency,outstanding_balance', 
+                'lease:id,unit_id,tenant_id,rent_amount,status,payment_frequency', 
                 
                 // 🎯 Nested eager loading - load unit AND its property in one go
                 // Without nested loading: 1 query for units + 1 query for properties

@@ -45,7 +45,6 @@ class Lease extends Model
         'termination_reason',
         'notes',
         'special_terms',
-        'outstanding_balance'
     ];
 
     protected $casts = [
@@ -55,7 +54,6 @@ class Lease extends Model
         'rent_amount' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
         'payment_day' => 'integer',
-        'outstanding_balance' => 'decimal:2',
     ];
 
     // Relationships
@@ -141,6 +139,15 @@ class Lease extends Model
         return (float) $this->payments()
             ->where('status', '!=', 'cancelled')
             ->sum('paid_amount');
+    }
+
+    public function getOutstandingBalanceAttribute(): float
+    {
+        $paid = array_key_exists('total_paid', $this->attributes) 
+            ? (float) $this->attributes['total_paid'] 
+            : (float) $this->payments()->where('status', '!=', 'cancelled')->sum('paid_amount');
+
+        return max(0, (float) $this->rent_amount - $paid);
     }
 
     public function getRemainingBalanceAttribute(): float

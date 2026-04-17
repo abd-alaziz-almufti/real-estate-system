@@ -39,8 +39,7 @@ class LeaseResource extends Resource
                 'payments as pending_payments_count' => fn($q) => $q->whereIn('status', ['pending', 'overdue']),
                 'documents', // ✅ Document count
             ])
-            ->withSum(['payments as total_paid' => fn($q) => $q->where('status', '!=', 'cancelled')], 'paid_amount')
-            ->withSum(['payments as total_outstanding' => fn($q) => $q->where('status', '!=', 'cancelled')], 'remaining_amount');
+            ->withSum(['payments as total_paid' => fn($q) => $q->where('status', '!=', 'cancelled')], 'paid_amount');
     }
 
     /**
@@ -257,11 +256,11 @@ class LeaseResource extends Resource
                     ->color('success')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('total_outstanding')
+                Tables\Columns\TextColumn::make('outstanding_balance')
                     ->label('Outstanding')
+                    ->state(fn ($record) => $record->outstanding_balance)
                     ->money('USD')
-                    ->color('danger')
-                    ->sortable(),
+                    ->color('danger'),
 
                 Tables\Columns\TextColumn::make('company.name')
                     ->label('Company')

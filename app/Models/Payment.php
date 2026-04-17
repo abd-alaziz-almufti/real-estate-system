@@ -137,11 +137,8 @@ public function getPaymentSummaryAttribute(): string
         return 'select lease first!!';
     }
 
-    // Use outstanding_balance from lease (total contract debt)
-    $totalContractDebt = (float) ($lease->rent_amount * ($lease->payments_count ?: 1)); // Temporary fallback
-    if ($lease->outstanding_balance) {
-        $totalContractDebt = (float) $lease->outstanding_balance + (float) $lease->total_paid;
-    }
+    // Use rent_amount from lease (total contract debt)
+    $totalContractDebt = (float) $lease->rent_amount; 
     
     $totalPaidSoFar = (float) ($lease->total_paid ?? $lease->payments()->where('status', 'paid')->sum('paid_amount'));
     $remainingBalance = max(0, $totalContractDebt - $totalPaidSoFar);
