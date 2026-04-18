@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Notifications\Notification;
 
 class EmployeeResource extends Resource
 {
@@ -21,15 +22,6 @@ class EmployeeResource extends Resource
     protected static ?string $navigationGroup = '👥 People';
     protected static ?int $navigationSort = 2;
 
-    public static function canCreate(): bool
-    {
-        $user = auth()->user();
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-
-        return $user->company->canAddEmployee();
-    }
 
     public static function getEloquentQuery(): Builder
     {

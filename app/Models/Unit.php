@@ -7,24 +7,37 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Auth;
 
 class Unit extends Model
 {
     use \App\Traits\HasCompany;
 
     protected static function boot()
-    {
-        parent::boot();
+{
+    parent::boot();
 
-        static::creating(function ($model) {
-            if (empty($model->company_id) && $model->property_id) {
-                $property = Property::find($model->property_id);
-                if ($property) {
-                    $model->company_id = $property->company_id;
-                }
+    // existing - keep this
+    static::creating(function ($model) {
+        if (empty($model->company_id) && $model->property_id) {
+            $property = Property::find($model->property_id);
+            if ($property) {
+                $model->company_id = $property->company_id;
             }
-        });
-    }
+        }
+    });
+
+    // ADD THIS
+    static::creating(function ($model) {
+        if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
+            if (!Auth::user()->company->canAddUnit()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'limit' => 'You have reached the maximum number of units allowed by your plan.',
+                ]);
+            }
+        }
+    });
+}
 
     protected $fillable = [
         'company_id',

@@ -11,6 +11,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Hash;
+use Filament\Notifications\Notification;
 
 class UserResource extends Resource
 {
@@ -19,15 +20,8 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = '🏢 Core';
     protected static ?int $navigationSort = 3;
 
-    public static function canCreate(): bool
-    {
-        $user = auth()->user();
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
 
-        return $user->company->canAddUser();
-    }
+   
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
 {
     return parent::getEloquentQuery()->with(['company']);

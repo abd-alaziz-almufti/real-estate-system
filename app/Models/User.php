@@ -12,6 +12,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
@@ -39,6 +40,20 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
         ];
     }
+    protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($model) {
+        if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
+            if (!Auth::user()->company->canAddUser()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'limit' => 'You have reached the maximum number of users allowed by your plan.',
+                ]);
+            }
+        }
+    });
+}
 
     public function canAccessPanel(Panel $panel): bool
     {

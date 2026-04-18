@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Notifications\Notification;
 
 class UnitResource extends Resource
 {
@@ -17,16 +18,6 @@ class UnitResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-home';
     protected static ?string $navigationGroup = '🏠 Properties';
     protected static ?int $navigationSort = 2;
-
-    public static function canCreate(): bool
-    {
-        $user = auth()->user();
-        if ($user->isSuperAdmin()) {
-            return true;
-        }
-
-        return $user->company->canAddUnit();
-    }
 
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {

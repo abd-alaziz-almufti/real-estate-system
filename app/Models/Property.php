@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Support\Facades\Auth;
 
 class Property extends Model
 {
@@ -20,6 +21,20 @@ class Property extends Model
     ];
 
     // --- Relationships ---
+    protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($model) {
+        if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
+            if (!Auth::user()->company->canAddProperty()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'limit' => 'You have reached the maximum number of properties allowed by your plan.',
+                ]);
+            }
+        }
+    });
+}
 
     public function location(): BelongsTo
     {

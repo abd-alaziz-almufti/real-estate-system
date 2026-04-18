@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class Employee extends Model
 {
@@ -30,6 +31,20 @@ class Employee extends Model
         'hire_date' => 'date',
         'salary' => 'decimal:2',
     ];
+    protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($model) {
+        if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
+            if (!Auth::user()->company->canAddEmployee()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'limit' => 'You have reached the maximum number of employees allowed by your plan.',
+                ]);
+            }
+        }
+    });
+}
 
     // Relationships
     public function user(): BelongsTo

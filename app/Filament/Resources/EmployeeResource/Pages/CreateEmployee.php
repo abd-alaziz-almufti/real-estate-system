@@ -13,7 +13,24 @@ use Illuminate\Support\Facades\Log;
 class CreateEmployee extends CreateRecord
 {
     protected static string $resource = EmployeeResource::class;
+      public function mount(): void
+    {
+        $user = auth()->user();
 
+        if (!$user->isSuperAdmin() && !$user->company?->canAddEmployee()) {
+            Notification::make()
+                ->title('Limit Reached')
+                ->body('Your plan does not allow adding more employees.')
+                ->danger()
+                ->persistent()
+                ->send();
+
+            $this->redirect($this->getResource()::getUrl('index'));
+            return;
+        }
+
+        parent::mount();
+    }
     protected function handleRecordCreation(array $data): Model
     {
         try {
