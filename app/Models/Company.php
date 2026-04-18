@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\Unit;
+use App\Models\Property;
+
 
 
 
@@ -45,6 +48,17 @@ class Company extends Model
     {
         return $this->hasMany(Expense::class);
     }
+   public function units(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+{
+    return $this->hasManyThrough(
+        Unit::class,      // Final model
+        Property::class,  // Intermediate model
+        'company_id',     // Foreign key on properties table
+        'property_id',    // Foreign key on units table
+        'id',             // Local key on companies table
+        'id'              // Local key on properties table
+    );
+}
 
     public function employees(): HasMany
     {
@@ -89,6 +103,7 @@ class Company extends Model
 
         return $this->properties()->count() < $limit;
     }
+    
 
     public function canAddEmployee(): bool
     {
