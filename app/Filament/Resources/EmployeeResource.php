@@ -21,6 +21,16 @@ class EmployeeResource extends Resource
     protected static ?string $navigationGroup = '👥 People';
     protected static ?int $navigationSort = 2;
 
+    public static function canCreate(): bool
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->company->canAddEmployee();
+    }
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()

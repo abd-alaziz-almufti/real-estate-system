@@ -19,6 +19,16 @@ class PropertyResource extends Resource
     protected static ?string $navigationGroup = '🏠 Properties';
     protected static ?int $navigationSort = 1;
 
+    public static function canCreate(): bool
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->company->canAddProperty();
+    }
+
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         return parent::getEloquentQuery()

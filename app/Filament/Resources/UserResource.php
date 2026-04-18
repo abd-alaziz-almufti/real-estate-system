@@ -18,6 +18,16 @@ class UserResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationGroup = '🏢 Core';
     protected static ?int $navigationSort = 3;
+
+    public static function canCreate(): bool
+    {
+        $user = auth()->user();
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        return $user->company->canAddUser();
+    }
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
 {
     return parent::getEloquentQuery()->with(['company']);
