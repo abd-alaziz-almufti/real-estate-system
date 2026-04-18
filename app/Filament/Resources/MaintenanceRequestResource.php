@@ -20,6 +20,19 @@ class MaintenanceRequestResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
     protected static ?string $navigationGroup = '💼 Operations';
     protected static ?int $navigationSort = 3;
+public static function shouldRegisterNavigation(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    return $user->company->hasFeature('maintenance_tracking');
+}
+
+public static function canViewAny(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    return $user->company->hasFeature('maintenance_tracking');
+}
 
     public static function getEloquentQuery(): Builder
     {
