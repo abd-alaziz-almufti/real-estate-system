@@ -31,7 +31,10 @@ public static function canViewAny(): bool
 {
     $user = auth()->user();
     if ($user->isSuperAdmin()) return true;
-    return $user->company->hasFeature('maintenance_tracking');
+    
+    // Check BOTH feature AND Shield permission
+    return $user->company->hasFeature('maintenance_tracking') 
+        && $user->can('view_any_maintenance::request');
 }
 
     public static function getEloquentQuery(): Builder

@@ -19,6 +19,21 @@ class DocumentResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationGroup = '💼 Operations';
     protected static ?int $navigationSort = 3;
+public static function shouldRegisterNavigation(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    return $user->company->hasFeature('document_management');
+}
+
+public static function canViewAny(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    
+    return $user->company->hasFeature('document_management') 
+        && $user->can('view_any_document');
+}
 
     // 🔥 PERFORMANCE OPTIMIZATION #1: Eager Loading
     public static function getEloquentQuery(): Builder

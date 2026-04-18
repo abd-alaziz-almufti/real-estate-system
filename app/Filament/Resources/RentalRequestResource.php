@@ -21,6 +21,21 @@ class RentalRequestResource extends Resource
     protected static ?string $pluralModelLabel = 'Rental Requests';
 
     // ✅ PERFORMANCE: Eager load all relationships at once
+    public static function shouldRegisterNavigation(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    return $user->company->hasFeature('rental_requests');
+}
+
+public static function canViewAny(): bool
+{
+    $user = auth()->user();
+    if ($user->isSuperAdmin()) return true;
+    
+    return $user->company->hasFeature('rental_requests') 
+        && $user->can('view_any_rental::request');
+}
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
