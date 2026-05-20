@@ -26,7 +26,7 @@ class PaymentNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-                    ->subject('Payment Receipt: ' . $this->payment->amount . ' ' . $this->payment->lease->unit->name)
+                    ->subject('Payment Receipt: ' . $this->payment->amount . ' - Unit ' . ($this->payment->lease->unit->unit_number ?? ''))
                     ->greeting('Hello ' . $notifiable->name . '!')
                     ->line('We have successfully processed your payment.')
                     ->line('Amount: ' . $this->payment->amount)
@@ -38,7 +38,7 @@ class PaymentNotification extends Notification implements ShouldQueue
     {
         return \Filament\Notifications\Notification::make()
             ->title('Payment Received')
-            ->body("A payment of {$this->payment->amount} was recorded for Unit {$this->payment->lease->unit->name}")
+            ->body("A payment of {$this->payment->amount} was recorded for Unit " . ($this->payment->lease->unit->unit_number ?? ''))
             ->icon('heroicon-o-currency-dollar')
             ->iconColor('success')
             ->actions([

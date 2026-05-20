@@ -18,6 +18,11 @@ class Property extends Model
         'name',
         'address',
         'description',
+        'rent_price',
+    ];
+
+    protected $casts = [
+        'rent_price' => 'decimal:2',
     ];
 
     // --- Relationships ---

@@ -9,22 +9,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Lease extends Model
 {
     use SoftDeletes, \App\Traits\HasCompany;
-    
+
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($lease) {
             // If company_id is still not set by the trait (e.g. if created outside an Auth session),
-            // try to fetch it from the unit's property.
-            if (!$lease->company_id && $lease->unit_id) {
-                $unit = Unit::with('property')->find($lease->unit_id);
-                if ($unit && $unit->property) {
-                    $lease->company_id = $unit->property->company_id;
+            // try to fetch it from the unit's property or property directly.
+            if (!$lease->company_id) {
+                if ($lease->property_id) {
+                    $property = Property::find($lease->property_id);
+                    if ($property) {
+                        $lease->company_id = $property->company_id;
+                    }
+                } elseif ($lease->unit_id) {
+                    $unit = Unit::with('property')->find($lease->unit_id);
+                    if ($unit && $unit->property) {
+                        $lease->company_id = $unit->property->company_id;
+                    }
                 }
             }
         });
@@ -32,6 +40,7 @@ class Lease extends Model
 
     protected $fillable = [
         'company_id',
+        'property_id',
         'unit_id',
         'tenant_id',
         'start_date',
@@ -57,6 +66,10 @@ class Lease extends Model
     ];
 
     // Relationships
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
+    }
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
@@ -139,8 +152,8 @@ class Lease extends Model
 
     public function getOutstandingBalanceAttribute(): float
     {
-        $paid = array_key_exists('total_paid', $this->attributes) 
-            ? (float) $this->attributes['total_paid'] 
+        $paid = array_key_exists('total_paid', $this->attributes)
+            ? (float) $this->attributes['total_paid']
             : (float) $this->payments()->where('status', '!=', 'cancelled')->sum('paid_amount');
 
         return max(0, (float) $this->rent_amount - $paid);
@@ -204,51 +217,100 @@ class Lease extends Model
 
     /**
      * ✅ FIX #1: CRITICAL - Prevent duplicate payment schedule generation
-     * 
+     *
      * Previous implementation used firstOrCreate(['due_date' => $dueDate])
      * which only checked due_date, allowing duplicates when called multiple times.
-     * 
+     *
      * This fixes the bug where calling generatePaymentSchedule() twice
      * would create 24 payments instead of 12.
      */
-    public function generatePaymentSchedule(): void
-    {
-        if ($this->status !== 'active') {
-            return;
-        }
+ public function generatePaymentSchedule(): void
+{
+    if ($this->status !== 'active') {
+        return;
+    }
 
-        $startDate = $this->start_date->copy();
-        $endDate = $this->end_date ?? $startDate->copy()->addYear(); // Default 1 year if open-ended
+    $startDate = $this->start_date->copy();
+    $endDate = $this->end_date ?? $startDate->copy()->addYear();
 
-        $currentDate = $startDate->copy();
+    $totalMonths = (int) $startDate->diffInMonths($endDate);
+    
+    // add an extra month for partials
+    if ($startDate->copy()->addMonths($totalMonths)->startOfDay()->lt($endDate->copy()->startOfDay())) {
+        $totalMonths++;
+    }
 
-        while ($currentDate->lte($endDate)) {
-            // Set to payment day of month
+    $totalMonths = max(1, $totalMonths);
+
+    $freqMap = [
+        'monthly' => 1,
+        'quarterly' => 3,
+        'semi_annually' => 6,
+        'yearly' => 12,
+    ];
+    $frequencyMonths = $freqMap[$this->payment_frequency] ?? 1;
+
+    $totalInstallments = (int) ceil($totalMonths / $frequencyMonths);
+    $totalInstallments = max(1, $totalInstallments);
+
+    $totalContractAmount = (float) $this->rent_amount;
+
+    $totalCents = (int) round($totalContractAmount * 100);
+    $baseInstallmentCents = intdiv($totalCents, $totalInstallments);
+    $remainderCents = $totalCents - ($baseInstallmentCents * $totalInstallments);
+
+    $installmentCentsDistribution = array_fill(0, $totalInstallments, $baseInstallmentCents);
+    for ($i = 0; $i < $remainderCents; $i++) {
+        $installmentCentsDistribution[$i]++;
+    }
+
+    DB::transaction(function () use ($startDate, $endDate, $installmentCentsDistribution, $baseInstallmentCents, $frequencyMonths, $totalInstallments) {
+        $currentDate = $this->start_date->copy();
+        $installmentIndex = 0;
+
+        while ($installmentIndex < $totalInstallments) {
             $dueDate = $currentDate->copy()->day($this->payment_day);
 
-            // ✅ FIX: Check if payment already exists for THIS LEASE + DUE DATE
-            // This prevents duplicate payments when method is called multiple times
-            $exists = $this->payments()
-                ->where('due_date', $dueDate)
+            // if computed dueDate is before the lease start, move it forward one period
+            if ($dueDate->lt($this->start_date)) {
+                $dueDate = match($this->payment_frequency) {
+                    'monthly' => $currentDate->copy()->addMonth()->day($this->payment_day),
+                    'quarterly' => $currentDate->copy()->addMonths(3)->day($this->payment_day),
+                    'semi_annually' => $currentDate->copy()->addMonths(6)->day($this->payment_day),
+                    'yearly' => $currentDate->copy()->addYear()->day($this->payment_day),
+                    default => $currentDate->copy()->addMonth()->day($this->payment_day),
+                };
+            }
+
+            $exists = \App\Models\Payment::whereDate('due_date', $dueDate->toDateString())
+                ->where('lease_id', $this->id)
                 ->exists();
 
             if (!$exists) {
-                // Create payment only if it doesn't already exist
+                $amountCents = $installmentCentsDistribution[$installmentIndex] ?? $baseInstallmentCents;
+                $amount = $amountCents / 100;
+
                 $this->payments()->create([
-                    'amount' => $this->rent_amount,
-                    'remaining_amount' => $this->rent_amount,
+                    'amount' => $amount,
+                    'paid_amount' => 0,
+                    'remaining_amount' => $amount,
                     'status' => 'pending',
                     'company_id' => $this->company_id,
+                    'due_date' => $dueDate,
                 ]);
             }
 
-            // Move to next period
+            $installmentIndex++;
+
+            // advance currentDate by payment frequency
             $currentDate = match($this->payment_frequency) {
                 'monthly' => $currentDate->addMonth(),
                 'quarterly' => $currentDate->addMonths(3),
                 'semi_annually' => $currentDate->addMonths(6),
                 'yearly' => $currentDate->addYear(),
+                default => $currentDate->addMonth(),
             };
         }
-    }
+    });
+}
 }

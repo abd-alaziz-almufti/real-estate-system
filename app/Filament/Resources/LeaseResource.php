@@ -28,16 +28,17 @@ class LeaseResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with([
-                'tenant:id,user_id',                   // ✅ Only the FK needed
-                'tenant.user:id,name,email,phone',      // ✅ User data from correct table
+                'tenant:id,user_id',
+                'tenant.user:id,name,email,phone',
+                'property:id,name', // Load the property if it's a direct property lease
                 'unit:id,unit_number,property_id',
                 'unit.property:id,name',
             ])
             ->withCount([
-                'payments', // ✅ Count without loading all payments
+                'payments',
                 'payments as paid_payments_count' => fn($q) => $q->where('status', 'paid'),
                 'payments as pending_payments_count' => fn($q) => $q->whereIn('status', ['pending', 'overdue']),
-                'documents', // ✅ Document count
+                'documents',
             ])
             ->withSum(['payments as total_paid' => fn($q) => $q->where('status', '!=', 'cancelled')], 'paid_amount');
     }
@@ -64,31 +65,37 @@ class LeaseResource extends Resource
                     ->schema([
                         self::companyField(),
 
+                        Forms\Components\Select::make('property_id')
+                            ->label('Property (For Whole Property Lease)')
+                            ->relationship('property', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->live()
+                            ->requiredWithout('unit_id')
+                            ->helperText('Select if renting the entire property instead of a single unit.'),
+
                         Forms\Components\Select::make('unit_id')
-                            ->label('Unit')
-                            ->required()
+                            ->label('Unit (For Specific Unit Lease)')
+                            ->requiredWithout('property_id')
                             ->searchable()
                             ->preload()
                             ->live()
                             ->relationship(
                                 'unit',
                                 'unit_number',
-                                // 🔥 PERFORMANCE: Only load available units + eager load property
-                                function (Builder $query) {
+                                function (Builder $query, Forms\Get $get) {
                                     return $query
                                         ->where('status', 'available')
-                                        ->when(
-                                            old('unit_id'),
-                                            fn ($q, $id) => $q->orWhere('id', $id)
-                                        )
+                                        ->when($get('property_id'), fn($q, $id) => $q->where('property_id', $id))
+                                        ->when(old('unit_id'), fn($q, $id) => $q->orWhere('id', $id))
                                         ->with('property:id,name');
                                 }
                             )
                             ->getOptionLabelFromRecordUsing(fn($record) => 
                                 $record->property->name . ' - Unit ' . $record->unit_number
                             )
-                            ->helperText('Only available units are shown'),
-
+                            ->helperText('If renting a single unit, select it here.')
+                            ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::recalculateRentAmount($get, $set)),
                         Forms\Components\Select::make('tenant_id')
                             ->label('Tenant')
                             ->required()
@@ -106,13 +113,17 @@ class LeaseResource extends Resource
                         Forms\Components\DatePicker::make('start_date')
                             ->required()
                             ->default(now())
-                            ->native(false),
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::recalculateRentAmount($get, $set)),
 
                         Forms\Components\DatePicker::make('end_date')
                             ->label('End Date (Optional)')
                             ->helperText('Leave empty for open-ended lease')
                             ->native(false)
-                            ->afterOrEqual('start_date'),
+                            ->afterOrEqual('start_date')
+                            ->live()
+                            ->afterStateUpdated(fn (Forms\Get $get, Forms\Set $set) => self::recalculateRentAmount($get, $set)),
 
                         Forms\Components\TextInput::make('rent_amount')
                             ->required()
@@ -192,22 +203,21 @@ class LeaseResource extends Resource
                     ->searchable()
                     ->toggleable(),
 
-                // 🔥 WHY: We use unit.property.name because it's ALREADY eager loaded
-                // No extra query - data is in memory from getEloquentQuery()
-                Tables\Columns\TextColumn::make('unit.property.name')
-                    ->label('Property')
-                    ->searchable()
-                    ->sortable()
-                    ->icon('heroicon-m-building-office-2')
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('unit.unit_number')
-                    ->label('Unit')
-                    ->searchable()
-                    ->sortable()
-                    ->icon('heroicon-m-home')
+                Tables\Columns\TextColumn::make('lease_target')
+                    ->label('Property / Unit')
+                    ->state(function ($record) {
+                        if ($record->unit) {
+                            return $record->unit->property->name . ' - Unit ' . $record->unit->unit_number;
+                        } elseif ($record->property) {
+                            return $record->property->name . ' (Whole Property)';
+                        }
+                        return 'N/A';
+                    })
+                    ->searchable(['unit.property.name', 'unit.unit_number', 'property.name'])
+                    ->icon('heroicon-m-home-modern')
                     ->badge()
-                    ->color('info'),
+                    ->color('info')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('tenant.user.name')
                     ->label('Tenant')
@@ -384,4 +394,53 @@ class LeaseResource extends Resource
             'edit' => Pages\EditLease::route('/{record}/edit'),
         ];
     }
+
+    public static function recalculateRentAmount(Forms\Get $get, Forms\Set $set): void
+{
+    $unitId = $get('unit_id');
+    $propertyId = $get('property_id');
+    $startDate = $get('start_date');
+    $endDate = $get('end_date');
+
+    if (! $startDate || ! $endDate || (!$unitId && !$propertyId)) {
+        return;
+    }
+
+    $rentPrice = 0;
+    if ($unitId) {
+        $unit = \App\Models\Unit::find($unitId);
+        if ($unit && $unit->rent_price) {
+            $rentPrice = (float) $unit->rent_price;
+        }
+    } elseif ($propertyId) {
+        $property = \App\Models\Property::find($propertyId);
+        if ($property && $property->rent_price) {
+            $rentPrice = (float) $property->rent_price;
+        }
+    }
+
+    if ($rentPrice <= 0) {
+        return;
+    }
+
+    try {
+        $start = \Carbon\Carbon::parse($startDate);
+        $end   = \Carbon\Carbon::parse($endDate);
+
+        // full months between dates (integer)
+        $monthsCount = (int) $start->diffInMonths($end);
+
+        // if there is an extra partial month, count it as a whole month
+        if ($start->copy()->addMonths($monthsCount)->startOfDay()->lt($end->copy()->startOfDay())) {
+            $monthsCount++;
+        }
+
+        $monthsCount = max(1, $monthsCount);
+
+        $rentAmount = round($monthsCount * $rentPrice, 2);
+        $set('rent_amount', $rentAmount);
+    } catch (\Exception $e) {
+        // fail silently (or log for debugging)
+    }
+}
 }

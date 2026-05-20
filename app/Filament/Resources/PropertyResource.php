@@ -68,6 +68,13 @@ class PropertyResource extends Resource
                         ->columnSpanFull()
                         ->prefixIcon('heroicon-m-home'),
 
+                    Forms\Components\TextInput::make('rent_price')
+                        ->label('Rent Price for Whole Property (Optional)')
+                        ->numeric()
+                        ->prefix('$')
+                        ->maxValue(99999999.99)
+                        ->columnSpanFull(),
+
                     Forms\Components\Textarea::make('address')
                         ->required()
                         ->rows(2)
@@ -132,6 +139,12 @@ class PropertyResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->icon('heroicon-m-map-pin'),
+
+                Tables\Columns\TextColumn::make('rent_price')
+                    ->label('Rent Price')
+                    ->money('USD')
+                    ->sortable()
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('units_count')
                     ->label('Units')
