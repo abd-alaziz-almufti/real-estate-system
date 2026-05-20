@@ -91,7 +91,7 @@ class LeaseResource extends Resource
                                         ->with('property:id,name');
                                 }
                             )
-                            ->getOptionLabelFromRecordUsing(fn($record) => 
+                            ->getOptionLabelFromRecordUsing(fn($record) =>
                                 $record->property->name . ' - Unit ' . $record->unit_number
                             )
                             ->helperText('If renting a single unit, select it here.')
@@ -265,6 +265,15 @@ class LeaseResource extends Resource
                     ->money('USD')
                     ->color('success')
                     ->sortable(),
+                    // In LeaseResource::table() columns array, after 'total_paid':
+Tables\Columns\IconColumn::make('is_fully_paid')
+    ->label('Settled')
+    ->boolean()
+    ->trueIcon('heroicon-o-check-badge')
+    ->falseIcon('heroicon-o-clock')
+    ->trueColor('success')
+    ->falseColor('gray')
+    ->state(fn ($record) => $record->is_fully_paid),
 
                 Tables\Columns\TextColumn::make('outstanding_balance')
                     ->label('Outstanding')
@@ -349,7 +358,7 @@ class LeaseResource extends Resource
             echo $pdf->output();
         }, 'lease-' . str_pad($record->id, 6, '0', STR_PAD_LEFT) . '.pdf');
     }),
-                
+
                 // 🔥 Custom action - Generate payments
                 Tables\Actions\Action::make('generate_payments')
                     ->label('Generate Payments')

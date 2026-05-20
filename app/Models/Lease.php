@@ -230,87 +230,92 @@ class Lease extends Model
         return;
     }
 
-    $startDate = $this->start_date->copy();
-    $endDate = $this->end_date ?? $startDate->copy()->addYear();
+    // ✅ Guard: don't regenerate if schedule already fully created
+    $existingCount = $this->payments()->count();
 
-    $totalMonths = (int) $startDate->diffInMonths($endDate);
-    
-    // add an extra month for partials
-    if ($startDate->copy()->addMonths($totalMonths)->startOfDay()->lt($endDate->copy()->startOfDay())) {
-        $totalMonths++;
+    $startDate = $this->start_date->copy()->startOfDay();
+    $endDate   = ($this->end_date ?? $startDate->copy()->addYear())->copy()->startOfDay();
+
+    if ($endDate->lte($startDate)) {
+        return;
     }
 
+    $totalMonths = (int) $startDate->diffInMonths($endDate);
+    if ($startDate->copy()->addMonths($totalMonths)->lt($endDate)) {
+        $totalMonths++;
+    }
     $totalMonths = max(1, $totalMonths);
 
     $freqMap = [
-        'monthly' => 1,
-        'quarterly' => 3,
+        'monthly'       => 1,
+        'quarterly'     => 3,
         'semi_annually' => 6,
-        'yearly' => 12,
+        'yearly'        => 12,
     ];
     $frequencyMonths = $freqMap[$this->payment_frequency] ?? 1;
 
     $totalInstallments = (int) ceil($totalMonths / $frequencyMonths);
     $totalInstallments = max(1, $totalInstallments);
 
-    $totalContractAmount = (float) $this->rent_amount;
-
-    $totalCents = (int) round($totalContractAmount * 100);
-    $baseInstallmentCents = intdiv($totalCents, $totalInstallments);
-    $remainderCents = $totalCents - ($baseInstallmentCents * $totalInstallments);
-
-    $installmentCentsDistribution = array_fill(0, $totalInstallments, $baseInstallmentCents);
-    for ($i = 0; $i < $remainderCents; $i++) {
-        $installmentCentsDistribution[$i]++;
+    // ✅ Guard: if exact same number of payments already exist, skip
+    if ($existingCount >= $totalInstallments) {
+        return;
     }
 
-    DB::transaction(function () use ($startDate, $endDate, $installmentCentsDistribution, $baseInstallmentCents, $frequencyMonths, $totalInstallments) {
-        $currentDate = $this->start_date->copy();
+    // ✅ Distribute total contract amount evenly across installments
+    // using integer cents to avoid floating-point rounding errors
+    $totalCents           = (int) round((float) $this->rent_amount * 100);
+    $baseInstallmentCents = intdiv($totalCents, $totalInstallments);
+    $remainderCents       = $totalCents - ($baseInstallmentCents * $totalInstallments);
+
+    // Distribute the remainder (pennies) to the first N installments
+    $distribution = array_fill(0, $totalInstallments, $baseInstallmentCents);
+    for ($i = 0; $i < $remainderCents; $i++) {
+        $distribution[$i]++;
+    }
+
+    DB::transaction(function () use ($startDate, $totalInstallments, $distribution, $frequencyMonths) {
+        $currentDate      = $startDate->copy();
         $installmentIndex = 0;
 
         while ($installmentIndex < $totalInstallments) {
+            // Compute due date: use payment_day on or after the current period start
             $dueDate = $currentDate->copy()->day($this->payment_day);
 
-            // if computed dueDate is before the lease start, move it forward one period
-            if ($dueDate->lt($this->start_date)) {
-                $dueDate = match($this->payment_frequency) {
-                    'monthly' => $currentDate->copy()->addMonth()->day($this->payment_day),
-                    'quarterly' => $currentDate->copy()->addMonths(3)->day($this->payment_day),
-                    'semi_annually' => $currentDate->copy()->addMonths(6)->day($this->payment_day),
-                    'yearly' => $currentDate->copy()->addYear()->day($this->payment_day),
-                    default => $currentDate->copy()->addMonth()->day($this->payment_day),
-                };
+            // If the computed due date is before the lease start, push it forward one period
+            if ($dueDate->lt($startDate)) {
+                $dueDate = $currentDate->copy()->addMonths($frequencyMonths)->day($this->payment_day);
             }
 
-            $exists = \App\Models\Payment::whereDate('due_date', $dueDate->toDateString())
-                ->where('lease_id', $this->id)
+            // ✅ Skip if a payment with this due_date already exists for this lease
+            $exists = Payment::where('lease_id', $this->id)
+                ->whereDate('due_date', $dueDate->toDateString())
                 ->exists();
 
-            if (!$exists) {
-                $amountCents = $installmentCentsDistribution[$installmentIndex] ?? $baseInstallmentCents;
-                $amount = $amountCents / 100;
+            if (! $exists) {
+                $amount = round($distribution[$installmentIndex] / 100, 2);
 
                 $this->payments()->create([
-                    'amount' => $amount,
-                    'paid_amount' => 0,
+                    'company_id'       => $this->company_id,
+                    'amount'           => $amount,
+                    'paid_amount'      => 0,
                     'remaining_amount' => $amount,
-                    'status' => 'pending',
-                    'company_id' => $this->company_id,
-                    'due_date' => $dueDate,
+                    'due_date'         => $dueDate,
+                    'status'           => 'pending',
                 ]);
             }
 
             $installmentIndex++;
-
-            // advance currentDate by payment frequency
-            $currentDate = match($this->payment_frequency) {
-                'monthly' => $currentDate->addMonth(),
-                'quarterly' => $currentDate->addMonths(3),
-                'semi_annually' => $currentDate->addMonths(6),
-                'yearly' => $currentDate->addYear(),
-                default => $currentDate->addMonth(),
-            };
+            $currentDate->addMonths($frequencyMonths);
         }
     });
+}
+public function getIsFullyPaidAttribute(): bool
+{
+    $paid = array_key_exists('total_paid', $this->attributes)
+        ? (float) $this->attributes['total_paid']
+        : (float) $this->payments()->where('status', '!=', 'cancelled')->sum('paid_amount');
+
+    return $paid >= (float) $this->rent_amount && (float) $this->rent_amount > 0;
 }
 }
