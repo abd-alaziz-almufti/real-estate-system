@@ -26,6 +26,7 @@ class PaymentsRelationManager extends RelationManager
                 $rentAmount = (float) $lease->rent_amount;
 
                 $totalPaid = $lease->payments()
+                    ->where('type', 'rent')
                     ->where('status', '!=', 'cancelled')
                     ->sum('paid_amount');
 
@@ -62,7 +63,7 @@ class PaymentsRelationManager extends RelationManager
                             </div>
                             <div>
                                 <span style="color:#6b7280;">Installments: </span>
-                                <span style="font-weight:600;">' . $lease->payments()->where('status', '!=', 'cancelled')->count() . '</span>
+                                <span style="font-weight:600;">' . $lease->payments()->where('type', 'rent')->where('status', '!=', 'cancelled')->count() . '</span>
                             </div>
                         </div>
                         <div style="background:#e5e7eb;border-radius:9999px;height:10px;overflow:hidden;">
@@ -72,6 +73,14 @@ class PaymentsRelationManager extends RelationManager
                 ');
             })
             ->columns([
+                Tables\Columns\TextColumn::make('type')
+                    ->badge()
+                    ->colors([
+                        'primary' => 'rent',
+                        'warning' => 'deposit',
+                        'info' => 'fee',
+                        'gray' => 'other',
+                    ]),
                 Tables\Columns\TextColumn::make('due_date')
                     ->label('Due Date')
                     ->date()
@@ -256,6 +265,17 @@ class PaymentsRelationManager extends RelationManager
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('type')
+                    ->required()
+                    ->options([
+                        'rent' => 'Rent',
+                        'deposit' => 'Deposit',
+                        'fee' => 'Fee',
+                        'other' => 'Other',
+                    ])
+                    ->default('rent')
+                    ->native(false),
+
                 Forms\Components\DatePicker::make('due_date')
                     ->required()
                     ->default(now())

@@ -40,7 +40,7 @@ class LeaseResource extends Resource
                 'payments as pending_payments_count' => fn($q) => $q->whereIn('status', ['pending', 'overdue']),
                 'documents',
             ])
-            ->withSum(['payments as total_paid' => fn($q) => $q->where('status', '!=', 'cancelled')], 'paid_amount');
+            ->withSum(['payments as total_paid' => fn($q) => $q->where('type', 'rent')->where('status', '!=', 'cancelled')], 'paid_amount');
     }
 
     /**
@@ -131,15 +131,17 @@ class LeaseResource extends Resource
                             ->prefix('$')
                             ->step(0.01)
                             ->minValue(0)
-                            ->default(0),
+                            ->default(0)
+                            ->readOnly()
+                            ->helperText('Auto-calculated from unit/property price × lease duration.'),
 
                         Forms\Components\TextInput::make('deposit_amount')
                             ->numeric()
                             ->prefix('$')
                             ->step(0.01)
                             ->minValue(0)
-                            ->default(0),
-
+                            ->default(0)
+                            ->helperText('A separate deposit record will be created. It does not affect installment amounts.'),
                         Forms\Components\Select::make('payment_frequency')
                             ->required()
                             ->options([
@@ -367,11 +369,31 @@ Tables\Columns\IconColumn::make('is_fully_paid')
                     ->visible(fn($record) => $record->status === 'active')
                     ->requiresConfirmation()
                     ->action(function($record) {
-                        $record->generatePaymentSchedule();
-                        \Filament\Notifications\Notification::make()
-                            ->title('Payment schedule generated')
-                            ->success()
-                            ->send();
+                        $result = $record->generatePaymentSchedule();
+
+                        match ($result) {
+                            'created' => \Filament\Notifications\Notification::make()
+                                ->title('Payment schedule generated successfully')
+                                ->body('Installments have been created.' . (
+                                    (float) $record->deposit_amount > 0
+                                        ? ' A deposit payment of $' . number_format($record->deposit_amount, 2) . ' was also recorded.'
+                                        : ''
+                                ))
+                                ->success()
+                                ->send(),
+
+                            'exists' => \Filament\Notifications\Notification::make()
+                                ->title('Schedule already exists')
+                                ->body('This lease already has ' . $record->payments()->count() . ' installment(s). Delete existing payments first to regenerate.')
+                                ->warning()
+                                ->send(),
+
+                            default => \Filament\Notifications\Notification::make()
+                                ->title('Cannot generate schedule')
+                                ->body('The lease must be in "active" status to generate payments.')
+                                ->danger()
+                                ->send(),
+                        };
                     }),
 
                 Tables\Actions\DeleteAction::make(),
