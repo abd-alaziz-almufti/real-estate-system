@@ -9,21 +9,47 @@ use Illuminate\Http\Request;
 
 class UnitController extends Controller
 {
+    public function index()
+    {
+        $units = Unit::query()
+            ->available()
+            ->with([
+                'property:id,name,address,description,location_id,company_id',
+                'property.location',
+                'primaryImage'
+            ])
+            ->paginate(12);
 
-   public function featured()
-{
-    $units = Unit::with('property:id,name,address,description')
-        ->with('images',function($query){
-            $query->where('is_primary',true)->latest()->limit(1);
-        })
-        ->where('status', 'available')
-        ->where('is_featured',1)
-        ->latest()
-        ->limit(3)
-        ->get();
+        return UnitResource::collection($units);
+    }
+
+    public function featured()
+    {
+        $units = Unit::with(['property:id,name,address,description,location_id,company_id', 'property.location', 'property.company:id,name,email'])
+            ->with('primaryImage')
+            ->available()
+            ->featured()
+            ->latest()
+            ->limit(5)
+            ->get();
 
 
-    return UnitResource::collection($units);
+        return UnitResource::collection($units);
 
-}
+    }
+
+    public function show(Unit $unit)
+    {
+
+        $unit->load([
+            'property:id,name,address,description,location_id,company_id',
+            'property.location',
+            'property.company:id,name,email',
+            'images',
+            'features',
+        ]);
+
+
+        return new UnitResource($unit);
+    }
 }
