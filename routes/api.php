@@ -25,4 +25,6 @@ Route::group([
     Route::get('properties', [\App\Http\Controllers\Api\PropertyController::class, 'index'])->name('properties.index');
     Route::get('properties/{property}', [\App\Http\Controllers\Api\PropertyController::class, 'show'])->name('properties.show');
 
+    // Unit ratings
+    Route::post('units/{unit}/rate', [UnitController::class, 'rate'])->name('units.rate');
 });

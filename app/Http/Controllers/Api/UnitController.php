@@ -9,16 +9,32 @@ use Illuminate\Http\Request;
 
 class UnitController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $units = Unit::query()
+        $filters = $request->only(['search', 'type', 'min_price', 'max_price', 'bedrooms', 'amenities']);
+        $sort = $request->input('sort', 'newest_to_oldest');
+
+        $query = Unit::query()
             ->available()
+            ->filter($filters)
             ->with([
                 'property:id,name,address,description,location_id,company_id',
                 'property.location',
-                'primaryImage'
+                'primaryImage',
+                'features'
             ])
-            ->paginate(12);
+            ->withAvg('ratings', 'rating')
+            ->withCount('ratings');
+
+        if ($sort === 'newest_to_oldest') {
+            $query->latest();
+        } elseif ($sort === 'oldest_to_newest') {
+            $query->oldest();
+        } elseif ($sort === 'top_rated') {
+            $query->orderByDesc('ratings_avg_rating');
+        }
+
+        $units = $query->paginate(12);
 
         return UnitResource::collection($units);
     }
@@ -51,5 +67,20 @@ class UnitController extends Controller
 
 
         return new UnitResource($unit);
+    }
+
+    public function rate(Request $request, Unit $unit)
+    {
+        $validated = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'review' => 'nullable|string'
+        ]);
+
+        $unit->ratings()->create([
+            'rating' => $validated['rating'],
+            'review' => $validated['review'],
+        ]);
+
+        return response()->json(['message' => 'Rating submitted successfully.'], 201);
     }
 }

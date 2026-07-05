@@ -25,13 +25,25 @@ class UnitResource extends JsonResource
                 }),
             'rent_price' => $this->rent_price,
             'status' => $this->status,
+            'type' => $this->type,
             'bedrooms' => $this->bedrooms,
             'bathrooms' => $this->bathrooms,
+            'average_rating' => $this->when(isset($this->ratings_avg_rating), round($this->ratings_avg_rating, 1)),
+            'reviews_count' => $this->when(isset($this->ratings_count), $this->ratings_count),
+            'features' => $this->whenLoaded('features', function () {
+                return $this->features->map(function ($feature) {
+                    return [
+                        'id' => $feature->id,
+                        'name' => $feature->name,
+                        'value' => $feature->value,
+                    ];
+                });
+            }),
             'sqft' => $this->sqft,
             'is_featured' => $this->is_featured,
             'status_color' => config('units.status_colors')[$this->status] ?? 'bg-gray-500',
             'property' => new PropertyResource($this->whenLoaded('property')),
-            'features' => $this->whenLoaded('features'),
+            // 'features' => $this->whenLoaded('features'),
             'images' => ImageResource::collection($this->whenLoaded('images')),
         ];
     }

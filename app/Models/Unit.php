@@ -85,6 +85,11 @@ class Unit extends Model
     {
         return $this->hasMany(UnitFeature::class);
     }
+
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class);
+    }
     public function rentalRequest(): HasMany
     {
         return $this->hasMany(RentalRequest::class);
@@ -142,6 +147,54 @@ class Unit extends Model
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
+    }
+
+    public function scopeFilter($query, array $filters)
+    {
+        $query->when($filters['search'] ?? null, function ($query, $search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('unit_number', 'like', "%{$search}%")
+                  ->orWhereHas('property', function ($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('address', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                  });
+            });
+        });
+
+        $query->when($filters['type'] ?? null, function ($query, $type) {
+            if ($type !== 'All') {
+                $query->where('type', $type);
+            }
+        });
+
+        $query->when($filters['min_price'] ?? null, function ($query, $minPrice) {
+            $query->where('rent_price', '>=', $minPrice);
+        });
+
+        $query->when($filters['max_price'] ?? null, function ($query, $maxPrice) {
+            $query->where('rent_price', '<=', $maxPrice);
+        });
+
+        $query->when($filters['bedrooms'] ?? null, function ($query, $bedrooms) {
+            if ($bedrooms !== 'Any') {
+                if ($bedrooms === '4+') {
+                    $query->where('bedrooms', '>=', 4);
+                } else {
+                    $query->where('bedrooms', $bedrooms);
+                }
+            }
+        });
+
+        $query->when($filters['amenities'] ?? null, function ($query, $amenities) {
+            if (is_array($amenities) && count($amenities) > 0) {
+                foreach ($amenities as $amenity) {
+                    $query->whereHas('features', function ($q) use ($amenity) {
+                        $q->where('name', $amenity)->where('value', 'true');
+                    });
+                }
+            }
+        });
     }
 
 
