@@ -94,7 +94,7 @@ class SubscriptionResource extends Resource
                     ->color('info'),
                 Tables\Columns\TextColumn::make('status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         'active' => 'success',
                         'trailing' => 'warning',
                         'past_due' => 'danger',
@@ -130,11 +130,11 @@ class SubscriptionResource extends Resource
                     ->preload(),
                 Tables\Filters\SelectFilter::make('status')
                     ->options([
-                                'active' => 'Active',
-                                'expired' => 'Expired',
-                                'canceled' => 'Canceled',
-                                'trailing' => 'Trailing',
-                                'past_due' => 'Past Due',
+                        'active' => 'Active',
+                        'expired' => 'Expired',
+                        'canceled' => 'Canceled',
+                        'trailing' => 'Trailing',
+                        'past_due' => 'Past Due',
                     ]),
             ])
             ->actions([
