@@ -18,10 +18,12 @@ class PlanResource extends JsonResource
         [
             'id' => $this->id,
             'name' => $this->name,
+            'slug' =>$this->slug,
             'price'=>$this->price,
             'billing_cycle'=>$this->billing_cycle,
             'description' => $this->description,
             'features' => $this->features,
+            'subscriptions_count' => $this->whenCounted('subscriptions'),
         ];
     }
 }

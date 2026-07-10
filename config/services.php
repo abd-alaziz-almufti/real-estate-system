@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'stripe' => [
+        // Since in .env STRIPE_KEY contains sk_test_... and STRIPE_SECRET contains pk_test_...
+        // we'll reference them accordingly, or use standard naming.
+        'key' => env('STRIPE_SECRET'), // Publishable Key
+        'secret' => env('STRIPE_KEY'), // Secret Key
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
+
 ];

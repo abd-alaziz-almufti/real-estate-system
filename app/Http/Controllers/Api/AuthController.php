@@ -75,6 +75,14 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $request->email)->firstOrFail();
+
+        if ($user->role !== 'tenant') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access denied. Only tenants are allowed.'
+            ], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

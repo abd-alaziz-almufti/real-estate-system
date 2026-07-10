@@ -15,4 +15,16 @@ class PlanController extends Controller
             ->get();
         return PlanResource::collection($plans);
     }
+
+    /**
+     * Get the details of a specific plan.
+     */
+    public function show(Plan $plan)
+    {
+        // Ensure we only show active plans, optional, but good practice
+        if (!$plan->is_active) {
+            return response()->json(['message' => 'Plan not found.'], 404);
+        }
+        return new PlanResource($plan->loadCount('subscriptions'));
+    }
 }
