@@ -6,13 +6,18 @@ use App\Http\Controllers\Api\PlanController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TenantDashboardController;
+use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Stripe\StripeClient;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+// ── Stripe Webhook (Public Callback) ─────────────────────────
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook']);
+
 // ── Auth Endpoints (Public) ──────────────────────────────────
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
@@ -21,6 +26,9 @@ Route::post('/auth/login', [AuthController::class, 'login']);
 Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+
+    // Stripe Checkout Session Creation
+    Route::post('/checkout/session', [CheckoutController::class, 'createSession']);
 
     // Tenant Dashboard stats
     Route::get('/tenant/dashboard', [TenantDashboardController::class, 'index']);

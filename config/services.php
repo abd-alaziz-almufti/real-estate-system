@@ -41,6 +41,14 @@ return [
         'key' => env('STRIPE_SECRET'), // Publishable Key
         'secret' => env('STRIPE_KEY'), // Secret Key
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        
+        'prices' => [
+            'basic' => 'price_1TrdGAIWcrKFk4EL7BicwTcD',
+            'professional' => 'price_1TrdcrIWcrKFk4ELWDlyqkjM',
+            'profisional' => 'price_1TrdcrIWcrKFk4ELWDlyqkjM', // fallback for spelling in dashboard
+            'enterprise' => 'price_1Trde9IWcrKFk4ELTZQfyCbu',
+            'enterprice' => 'price_1Trde9IWcrKFk4ELTZQfyCbu', // fallback for spelling in dashboard
+        ],
     ],
 
 ];

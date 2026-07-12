@@ -18,24 +18,24 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
-            'phone'    => 'nullable|string',
+            'phone' => 'nullable|string',
         ]);
 
         $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'phone'    => $request->phone,
-            'role'     => 'tenant', // افتراضياً مستأجر
+            'phone' => $request->phone,
+            'role' => 'tenant', // افتراضياً مستأجر
         ]);
 
         // إنشاء بروفايل المستأجر المربوط به (بدون Global Scope لأنه مستأجر جديد بلا شركة)
         Tenant::withoutGlobalScopes()->create([
-            'user_id'    => $user->id,
-            'status'     => 'active',
+            'user_id' => $user->id,
+            'status' => 'active',
             'company_id' => null,
         ]);
 
@@ -44,13 +44,13 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'User registered successfully',
-            'data'    => [
+            'data' => [
                 'token' => $token,
-                'user'  => [
-                    'id'    => $user->id,
-                    'name'  => $user->name,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
                     'email' => $user->email,
-                    'role'  => $user->role,
+                    'role' => $user->role,
                     'phone' => $user->phone,
                 ]
             ]
@@ -63,7 +63,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|string|email',
+            'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
@@ -76,25 +76,25 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->firstOrFail();
 
-        if ($user->role !== 'tenant') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Access denied. Only tenants are allowed.'
-            ], 403);
-        }
+        // if ($user->role !== 'tenant') {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Access denied. Only tenants are allowed.'
+        //     ], 403);
+        // }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Login successful',
-            'data'    => [
+            'data' => [
                 'token' => $token,
-                'user'  => [
-                    'id'    => $user->id,
-                    'name'  => $user->name,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
                     'email' => $user->email,
-                    'role'  => $user->role,
+                    'role' => $user->role,
                     'phone' => $user->phone,
                 ]
             ]
@@ -122,11 +122,11 @@ class AuthController extends Controller
         $user = $request->user();
         return response()->json([
             'success' => true,
-            'data'    => [
-                'id'    => $user->id,
-                'name'  => $user->name,
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
                 'email' => $user->email,
-                'role'  => $user->role,
+                'role' => $user->role,
                 'phone' => $user->phone,
             ]
         ]);
