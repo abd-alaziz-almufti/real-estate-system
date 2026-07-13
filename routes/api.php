@@ -35,6 +35,12 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     // Tenant Dashboard stats — tenants only
     Route::get('/tenant/dashboard', [TenantDashboardController::class, 'index'])
         ->middleware('role:tenant,sanctum');
+
+    // Tenant Payments Resource
+    Route::get('/tenant/payments', [\App\Http\Controllers\Api\TenantPaymentController::class, 'index'])
+        ->middleware('role:tenant,sanctum');
+    Route::get('/tenant/payments/{payment}', [\App\Http\Controllers\Api\TenantPaymentController::class, 'show'])
+        ->middleware('role:tenant,sanctum');
 });
 
 // ── General Public Endpoints 

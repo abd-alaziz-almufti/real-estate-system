@@ -31,19 +31,19 @@ class PaymentResource extends Resource
             ->with([
                 // 🎯 Select only needed columns (not all 15+ user columns)
                 // This reduces data transfer from DB to PHP by ~70%
-                'lease:id,unit_id,tenant_id,rent_amount,status,payment_frequency', 
-                
+                'lease:id,unit_id,tenant_id,rent_amount,status,payment_frequency',
+
                 // 🎯 Nested eager loading - load unit AND its property in one go
                 // Without nested loading: 1 query for units + 1 query for properties
                 // With nested: Both loaded in the same query join
                 'lease.unit:id,unit_number,property_id',
                 'lease.unit.property:id,name',
-                
+
                 // 🎯 Load tenant info (who is paying)
                 // 'lease.tenant:id,name,email'
                 'lease.tenant:id,user_id',
                 'lease.tenant.user:id,name,email',
-                
+
                 // 🎯 Load who recorded the payment (for audit trail)
                 'recordedBy:id,name',
             ])
@@ -78,21 +78,26 @@ class PaymentResource extends Resource
                             )
                             // 🎯 WHY: Custom label format shows context without extra queries
                             // Data is already loaded via with() above - zero cost!
-                            ->getOptionLabelFromRecordUsing(fn($record) =>
-                                "#{$record->id} - {$record->unit->property->name} - " .
-                                "Unit {$record->unit->unit_number} - " . ($record->tenant->user->name ?? 'N/A')
+                            ->getOptionLabelFromRecordUsing(
+                                fn($record) =>
+                                "#{$record->id} - {$record?->unit?->property?->name} - " .
+                                "Unit {$record?->unit?->unit_number} - " . ($record?->tenant->user->name ?? 'N/A')
                             )
                             // 🔥 PERFORMANCE: Custom search to search across relationships
                             // WHY: Default search only searches lease.id
                             // This searches tenant name, property name, unit number
                             ->getSearchResultsUsing(function (string $search) {
                                 return Lease::where('status', 'active')
-                                    ->where(function($query) use ($search) {
+                                    ->where(function ($query) use ($search) {
                                         $query->where('id', 'like', "%{$search}%")
-                                            ->orWhereHas('tenant.user', fn($q) =>
+                                            ->orWhereHas(
+                                                'tenant.user',
+                                                fn($q) =>
                                                 $q->where('name', 'like', "%{$search}%")
                                             )
-                                            ->orWhereHas('unit.property', fn($q) => 
+                                            ->orWhereHas(
+                                                'unit.property',
+                                                fn($q) =>
                                                 $q->where('name', 'like', "%{$search}%")
                                             );
                                     })
@@ -112,11 +117,11 @@ class PaymentResource extends Resource
 
                                     if ($lease) {
                                         // ✅ Only auto-fill Amount Due (the installment target)
-                                         // Amount Paid is left for the admin to enter manually
-                                         // Status defaults to 'pending' since nothing is paid yet
-                                         $set('amount', $lease->rent_amount);
-                                         $set('paid_amount', 0);
-                                         $set('remaining_amount', $lease->rent_amount);
+                                        // Amount Paid is left for the admin to enter manually
+                                        // Status defaults to 'pending' since nothing is paid yet
+                                        $set('amount', $lease->rent_amount);
+                                        $set('paid_amount', 0);
+                                        $set('remaining_amount', $lease->rent_amount);
                                         $set('status', 'pending');
                                     }
                                 }
@@ -135,11 +140,12 @@ class PaymentResource extends Resource
                                     ->withSum('payments as total_paid', 'paid_amount')
                                     ->find($leaseId);
 
-                                if (!$lease) return '';
+                                if (!$lease)
+                                    return '';
 
                                 $totalPaidSoFar = (float) ($lease->total_paid ?? 0);
-                                $rentAmount     = (float) ($lease->rent_amount ?? 0);
-                                $remaining      = max(0, $rentAmount - $totalPaidSoFar);
+                                $rentAmount = (float) ($lease->rent_amount ?? 0);
+                                $remaining = max(0, $rentAmount - $totalPaidSoFar);
 
                                 return new \Illuminate\Support\HtmlString("
                                     <div class='bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 space-y-1 text-sm'>
@@ -171,14 +177,14 @@ class PaymentResource extends Resource
                                 ");
                             })
                             ->visible(fn(Forms\Get $get) => filled($get('lease_id'))),
-                           
+
 
                         Forms\Components\DatePicker::make('due_date')
                             ->required()
                             ->default(now())
                             ->native(false),
 
-                                  Forms\Components\TextInput::make('amount')
+                        Forms\Components\TextInput::make('amount')
                             ->label('Amount Due')
                             ->numeric()
                             ->prefix('$')
@@ -188,7 +194,7 @@ class PaymentResource extends Resource
                                 $paid = (float) ($get('paid_amount') ?? 0);
                                 $due = (float) ($state ?? 0);
                                 $set('remaining_amount', max(0, $due - $paid));
-                                
+
                                 if ($paid >= $due && $due > 0) {
                                     $set('status', 'paid');
                                 } elseif ($paid > 0) {
@@ -205,8 +211,8 @@ class PaymentResource extends Resource
                             ->live(onBlur: true)
                             ->afterStateUpdated(function ($state, Forms\Set $set, Forms\Get $get) {
                                 $due = (float) ($get('amount') ?? 0);
-                                $set('remaining_amount', max(0, $due - (float)$state));
-                        
+                                $set('remaining_amount', max(0, $due - (float) $state));
+
                                 // Status logic
                                 if ($state >= $due && $due > 0) {
                                     $set('status', 'paid');
@@ -223,10 +229,10 @@ class PaymentResource extends Resource
                             ->prefix('$')
                             ->readonly()
                             ->placeholder('Calculated automatically'),
- 
-                 
+
+
                         Forms\Components\Select::make('payment_method')
-                        ->required()
+                            ->required()
                             ->options([
                                 'cash' => 'Cash',
                                 'bank_transfer' => 'Bank Transfer',
@@ -428,7 +434,7 @@ class PaymentResource extends Resource
                             ->prefix('$')
                             ->required()
                             ->default(fn($record) => $record->remaining_amount),
-                        
+
                         Forms\Components\Select::make('method')
                             ->label('Payment Method')
                             ->options([
@@ -440,17 +446,17 @@ class PaymentResource extends Resource
                             ])
                             ->required()
                             ->native(false),
-                        
+
                         Forms\Components\TextInput::make('reference')
                             ->label('Reference Number'),
                     ])
-                    ->action(function($record, array $data) {
+                    ->action(function ($record, array $data) {
                         $record->recordPayment(
                             $data['amount'],
                             $data['method'],
                             $data['reference'] ?? null
                         );
-                        
+
                         \Filament\Notifications\Notification::make()
                             ->title('Payment recorded successfully')
                             ->success()
@@ -462,15 +468,15 @@ class PaymentResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    
+
                     // 🔥 Bulk mark as overdue
                     Tables\Actions\BulkAction::make('mark_overdue')
                         ->label('Mark as Overdue')
                         ->icon('heroicon-o-exclamation-triangle')
                         ->color('danger')
                         ->requiresConfirmation()
-                        ->action(function($records) {
-                            foreach($records as $record) {
+                        ->action(function ($records) {
+                            foreach ($records as $record) {
                                 $record->markAsOverdue();
                             }
                         }),

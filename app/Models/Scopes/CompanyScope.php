@@ -20,8 +20,8 @@ class CompanyScope implements Scope
 
             // Only apply if the user is not a super admin
             if ($user && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
-                // Tenants need to see units and properties from all companies to browse the marketplace
-                if ($user->role === 'tenant' || (method_exists($user, 'hasRole') && $user->hasRole('tenant'))) {
+                // Skip CompanyScope for tenants since they access their own scoped data via relationships
+                if (method_exists($user, 'isTenant') && $user->isTenant()) {
                     return;
                 }
 

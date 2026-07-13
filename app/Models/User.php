@@ -42,19 +42,19 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
     protected static function boot()
-{
-    parent::boot();
+    {
+        parent::boot();
 
-    static::creating(function ($model) {
-        if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
-            if (!Auth::user()->company->canAddUser()) {
-                throw \Illuminate\Validation\ValidationException::withMessages([
-                    'limit' => 'You have reached the maximum number of users allowed by your plan.',
-                ]);
+        static::creating(function ($model) {
+            if (Auth::hasUser() && !Auth::user()->isSuperAdmin()) {
+                if (!Auth::user()->company->canAddUser()) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'limit' => 'You have reached the maximum number of users allowed by your plan.',
+                    ]);
+                }
             }
-        }
-    });
-}
+        });
+    }
 
     public function canAccessPanel(Panel $panel): bool
     {
@@ -82,31 +82,31 @@ class User extends Authenticatable implements FilamentUser
     // }
     // app/Models/User.php
 
-// public function leasesAsTenant(): HasMany
+    // public function leasesAsTenant(): HasMany
 // {
 //     return $this->hasMany(Lease::class, 'tenant_id');
 // }
 // app/Models/User.php
 
-public function leasesAsTenant(): HasManyThrough
-{
-    return $this->hasManyThrough(
-        Lease::class, 
-        Tenant::class, 
-        'user_id',   
-        'tenant_id',
-        'id',        
-        'id'         
-    );
-}
+    public function leasesAsTenant(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            Lease::class,
+            Tenant::class,
+            'user_id',
+            'tenant_id',
+            'id',
+            'id'
+        );
+    }
 
-// public function currentLease(): HasOne
+    // public function currentLease(): HasOne
 // {
 //     return $this->hasOne(Lease::class, 'tenant_id')->where('status', 'active');
 // }
 
 
-// Better approach:
+    // Better approach:
 // public function currentLease()
 // {
 //     return $this->hasOneThrough(Lease::class, Tenant::class, 'user_id', 'tenant_id', 'id', 'id')
@@ -116,19 +116,19 @@ public function leasesAsTenant(): HasManyThrough
 // {
 //     return $this->hasManyThrough(Payment::class, Lease::class, 'tenant_id', 'lease_id');
 // }
-public function tenant(): HasOne
-{
-    return $this->hasOne(Tenant::class);
-}
+    public function tenant(): HasOne
+    {
+        return $this->hasOne(Tenant::class);
+    }
 
-public function employee(): HasOne
-{
-    return $this->hasOne(Employee::class);
-}
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
+    }
 
     public function isTenant(): bool
     {
-        return $this->hasRole('tenant') && $this->tenant()->exists();
+        return $this->role == 'tenant' || $this->hasRole('tenant');
     }
 
     // --- Scopes ---
