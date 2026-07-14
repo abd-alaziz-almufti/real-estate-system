@@ -43,6 +43,7 @@ class PaymentResource extends Resource
                 // 'lease.tenant:id,name,email'
                 'lease.tenant:id,user_id',
                 'lease.tenant.user:id,name,email',
+                'tenant',
 
                 // 🎯 Load who recorded the payment (for audit trail)
                 'recordedBy:id,name',
@@ -151,15 +152,15 @@ class PaymentResource extends Resource
                                     <div class='bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700 space-y-1 text-sm'>
                                         <div class='flex justify-between'>
                                             <span class='text-gray-500 font-medium'>Property:</span>
-                                            <span class='font-bold'>{$lease->unit->property->name}</span>
+                                            <span class='font-bold'>{$lease->unit?->property?->name}</span>
                                         </div>
                                         <div class='flex justify-between'>
                                             <span class='text-gray-500 font-medium'>Unit:</span>
-                                            <span class='font-bold text-primary-600'>{$lease->unit->unit_number}</span>
+                                            <span class='font-bold text-primary-600'>{$lease->unit?->unit_number}</span>
                                         </div>
                                         <div class='flex justify-between border-t border-gray-200 dark:border-gray-600 pt-1 mt-1'>
                                             <span class='text-gray-500 font-medium'>Tenant:</span>
-                                            <span class='font-bold'>{$lease->tenant->user?->name}</span>
+                                            <span class='font-bold'>{$lease->tenant?->user?->name}</span>
                                         </div>
                                         <div class='flex justify-between'>
                                             <span class='text-gray-500 font-medium'>Rent Amount:</span>

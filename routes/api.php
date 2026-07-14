@@ -31,6 +31,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/checkout/session', [CheckoutController::class, 'createSession']);
     Route::post('/checkout/verify-session', [CheckoutController::class, 'verifySession']);
     Route::post('/checkout/lease-session', [CheckoutController::class, 'createLeaseSession']);
+    Route::post('/checkout/payment-session', [CheckoutController::class, 'createPaymentSession']);
+    Route::post('/checkout/verify-payment-session', [CheckoutController::class, 'verifyPaymentSession']);
 
     // Tenant Dashboard stats — tenants only
     Route::get('/tenant/dashboard', [TenantDashboardController::class, 'index'])
@@ -40,6 +42,14 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/tenant/payments', [\App\Http\Controllers\Api\TenantPaymentController::class, 'index'])
         ->middleware('role:tenant,sanctum');
     Route::get('/tenant/payments/{payment}', [\App\Http\Controllers\Api\TenantPaymentController::class, 'show'])
+        ->middleware('role:tenant,sanctum');
+    // Route::post('/tenant/payments/{payment}/pay', [\App\Http\Controllers\Api\TenantPaymentController::class, 'pay'])
+    //     ->middleware('role:tenant,sanctum');
+
+    // Tenant Leases Resource
+    Route::get('/tenant/leases', [\App\Http\Controllers\Api\TenantLeaseController::class, 'index'])
+        ->middleware('role:tenant,sanctum');
+    Route::get('/tenant/leases/{lease}', [\App\Http\Controllers\Api\TenantLeaseController::class, 'show'])
         ->middleware('role:tenant,sanctum');
 });
 
