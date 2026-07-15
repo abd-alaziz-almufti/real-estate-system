@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\User;
 use Stripe\StripeClient;
 use Stripe\Webhook;
 use Stripe\Exception\SignatureVerificationException;
@@ -16,7 +18,7 @@ class StripePaymentService
         $this->stripe = new StripeClient(config('services.stripe.secret'));
     }
 
-    public function createCheckoutSession(Plan $plan, string $companyId, string $userId)
+    public function createSubscriptionCheckoutSession(Plan $plan, string $companyId, string $userId)
     {
         // Retrieve the hardcoded price ID from config if it exists
         $priceId = config("services.stripe.prices.{$plan->slug}");
@@ -62,7 +64,7 @@ class StripePaymentService
         ]);
     }
 
-    
+
     public function createLeaseCheckoutSession(\App\Models\Unit $unit, string $userId)
     {
         $rentPrice = (float) $unit->rent_price;
@@ -92,6 +94,37 @@ class StripePaymentService
                 'unit_id' => $unit->id,
                 'user_id' => $userId,
                 'type' => 'lease',
+            ],
+        ]);
+    }
+    public function createPaymentCheckoutSession(Payment $payment, string $userId)
+    {
+        $remainingAmount = $payment->remaining_amount;
+        $lineItems = [
+            [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => ' Rent Payment - ' . $payment?->lease?->unit?->property?->name . ' Unit ' . $payment->lease->unit->unit_number,
+                        'description' => 'Rent payment for unit ' . $payment?->lease?->unit?->unit_number . ' at ' . $payment->lease->unit->property->name,
+                    ],
+                    'unit_amount' => (int) ($remainingAmount * 100),
+                ],
+                'quantity' => 1,
+            ]
+        ];
+
+        return $this->stripe->checkout->sessions->create([
+            'payment_method_types' => ['card'],
+            'line_items' => $lineItems,
+            'mode' => 'payment',
+            'success_url' => rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/') . '/checkout/success?session_id={CHECKOUT_SESSION_ID}&type=payment',
+            'cancel_url' => rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/') . '/tenant/payments',
+            'client_reference_id' => 'payment_' . $payment->id,
+            'metadata' => [
+                'payment_id' => $payment->id,
+                'user_id' => $userId,
+                'type' => 'payment',
             ],
         ]);
     }

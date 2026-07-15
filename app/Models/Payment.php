@@ -13,11 +13,11 @@ use Illuminate\Support\Facades\DB;
 class Payment extends Model
 {
     use SoftDeletes, \App\Traits\HasCompany;
-    
+
     protected static function boot()
     {
         parent::boot();
-        
+
         static::creating(function ($payment) {
             // Automatically set company_id from the lease if not set
             if (!$payment->company_id && $payment->lease_id) {
@@ -67,7 +67,7 @@ class Payment extends Model
         if ($value !== null) {
             return (float) $value;
         }
-        
+
         return max(0, (float) ($this->amount ?? 0) - (float) ($this->paid_amount ?? 0));
     }
 
@@ -87,7 +87,7 @@ class Payment extends Model
         return $this->morphMany(Document::class, 'documentable');
     }
 
-    public function tenant(): HasOneThrough
+    public function tenant()
     {
         return $this->hasOneThrough(
             Tenant::class,
@@ -118,9 +118,9 @@ class Payment extends Model
     public function scopeOverdue($query)
     {
         return $query->where('status', 'overdue')
-            ->orWhere(function($q) {
+            ->orWhere(function ($q) {
                 $q->whereIn('status', ['pending', 'partial'])
-                  ->where('due_date', '<', now());
+                    ->where('due_date', '<', now());
             });
     }
 
@@ -133,20 +133,20 @@ class Payment extends Model
     public function getPaymentSummaryAttribute(): string
     {
         $lease = $this->lease;
-        
+
         if (!$lease) {
             return 'select lease first!!';
         }
 
         // Use rent_amount from lease (total contract debt)
-        $totalContractDebt = (float) $lease->rent_amount; 
-        
+        $totalContractDebt = (float) $lease->rent_amount;
+
         $totalPaidSoFar = (float) ($lease->total_paid ?? $lease->payments()->where('status', 'paid')->sum('paid_amount'));
         $remainingBalance = max(0, $totalContractDebt - $totalPaidSoFar);
 
-        return number_format($totalContractDebt, 2) . " [Total] - " . 
-               number_format($totalPaidSoFar, 2) . " [Paid] = " . 
-               number_format($remainingBalance, 2) . " [Balance]";
+        return number_format($totalContractDebt, 2) . " [Total] - " .
+            number_format($totalPaidSoFar, 2) . " [Paid] = " .
+            number_format($remainingBalance, 2) . " [Balance]";
     }
 
     public function getIsPaidAttribute(): bool
@@ -156,8 +156,8 @@ class Payment extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        return $this->status === 'overdue' || 
-               ($this->status === 'pending' && $this->due_date->isPast());
+        return $this->status === 'overdue' ||
+            ($this->status === 'pending' && $this->due_date->isPast());
     }
 
     public function getDaysOverdueAttribute(): ?int

@@ -9,12 +9,16 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\TenantDashboardController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\StripeWebhookController;
+use App\Http\Controllers\Api\TenantRentalRequestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+use Illuminate\Support\Facades\Broadcast;
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 // ── Stripe Webhook (Public Callback) ─────────────────────────
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handleWebhook']);
@@ -32,6 +36,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/checkout/session', [CheckoutController::class, 'createSession']);
     Route::post('/checkout/verify-session', [CheckoutController::class, 'verifySession']);
     Route::post('/checkout/lease-session', [CheckoutController::class, 'createLeaseSession']);
+    Route::post('/checkout/payment-session', [CheckoutController::class, 'createPaymentSession']);
+    Route::post('/checkout/verify-payment-session', [CheckoutController::class, 'verifyPaymentSession']);
 
     // Tenant Dashboard stats — tenants only
     Route::get('/tenant/dashboard', [TenantDashboardController::class, 'index'])
@@ -47,6 +53,22 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/tenant/payments', [\App\Http\Controllers\Api\TenantPaymentController::class, 'index'])
         ->middleware('role:tenant,sanctum');
     Route::get('/tenant/payments/{payment}', [\App\Http\Controllers\Api\TenantPaymentController::class, 'show'])
+        ->middleware('role:tenant,sanctum');
+    // Route::post('/tenant/payments/{payment}/pay', [\App\Http\Controllers\Api\TenantPaymentController::class, 'pay'])
+    //     ->middleware('role:tenant,sanctum');
+
+    // Tenant Leases Resource
+    Route::get('/tenant/leases', [\App\Http\Controllers\Api\TenantLeaseController::class, 'index'])
+        ->middleware('role:tenant,sanctum');
+    Route::get('/tenant/leases/{lease}', [\App\Http\Controllers\Api\TenantLeaseController::class, 'show'])
+        ->middleware('role:tenant,sanctum');
+
+    // Tenant Rental Requests Resource
+    Route::get('/tenant/rental-requests', [TenantRentalRequestController::class, 'index'])
+        ->middleware('role:tenant,sanctum');
+    Route::get('/tenant/rental-requests/{id}', [TenantRentalRequestController::class, 'show'])
+        ->middleware('role:tenant,sanctum');
+    Route::delete('/tenant/rental-requests/{id}', [TenantRentalRequestController::class, 'destroy'])
         ->middleware('role:tenant,sanctum');
 });
 

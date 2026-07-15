@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\SubscriptionPayment;
+use App\Models\User;
+use App\Notifications\PaymentNotification;
 use App\Services\StripePaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 class CheckoutController extends Controller
 {
@@ -43,7 +47,7 @@ class CheckoutController extends Controller
         $referenceId = $user->company_id ? (string) $user->company_id : 'user_' . $user->id;
 
         try {
-            $session = $this->stripeService->createCheckoutSession($plan, $referenceId, (string) $user->id);
+            $session = $this->stripeService->createSubscriptionCheckoutSession($plan, $referenceId, (string) $user->id);
 
             return response()->json([
                 'success' => true,
@@ -83,6 +87,47 @@ class CheckoutController extends Controller
             ], 500);
         }
     }
+    public function createPaymentSession(Request $request)
+    {
+        $request->validate([
+            'payment_id' => 'required|exists:payments,id'
+        ]);
+        $user = $request->user();
+        $payment = Payment::with([
+            'lease' => function ($query) {
+                $query->select('id', 'unit_id', 'start_date', 'end_date', 'status')
+                    ->with(['unit:id,unit_number,property_id', 'unit.property:id,name']);
+            }
+        ])->findOrFail($request->payment_id);
+
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This Payment request is not exist'
+            ]);
+        }
+        if ($payment->status == 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This Payment request is already paid'
+            ]);
+        }
+        try {
+            $session = $this->stripeService->createPaymentCheckoutSession($payment, (string) $user->id);
+
+            return response()->json([
+                'success' => true,
+                'url' => $session->url,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe Session Creation Failed',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+    }
 
     public function verifySession(Request $request)
     {
@@ -103,20 +148,19 @@ class CheckoutController extends Controller
                     if ($unitId && $userId) {
                         $user = \App\Models\User::find($userId);
                         if ($user) {
-                            // Find or create Tenant record for this user
-                            $tenant = \App\Models\Tenant::firstOrCreate(
-                                ['user_id' => $user->id],
+                            $unit = \App\Models\Unit::with('property')->find($unitId);
+                            $companyId = $unit && $unit->property ? $unit->property->company_id : null;
+
+                            // Find or create Tenant record for this user and company
+                            $tenant = \App\Models\Tenant::withoutGlobalScopes()->firstOrCreate(
+                                [
+                                    'user_id' => $user->id,
+                                    'company_id' => $companyId
+                                ],
                                 [
                                     'status' => 'active',
                                 ]
                             );
-                            
-                            $unit = \App\Models\Unit::with('property')->find($unitId);
-                            if ($unit && $unit->property) {
-                                if (empty($tenant->company_id)) {
-                                    $tenant->update(['company_id' => $unit->property->company_id]);
-                                }
-                            }
 
                             // Create the RentalRequest (طلب إيجار)
                             $rentalRequest = \App\Models\RentalRequest::create([
@@ -180,6 +224,50 @@ class CheckoutController extends Controller
                         ]);
                     }
                 }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Payment not completed.',
+            ], 400);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to verify session.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function verifyPaymentSession(Request $request)
+    {
+        $request->validate([
+            'session_id' => 'required|string',
+        ]);
+
+        try {
+            $session = $this->stripeService->retrieveSession($request->session_id);
+
+            $type = $session->metadata->type;
+
+            if ($type === 'payment') {
+                $payment = Payment::with('lease.unit.property')->findOrFail($session->metadata->payment_id);
+
+                $paymentAmount = $session->amount_total / 100;
+                $payment->update([
+                    'status' => 'paid',
+                    'payment_date' => now(),
+                    'paid_amount' => $payment->paid_amount + $paymentAmount,
+                    'payment_method' => 'credit_card',
+                    'reference_number' => $session->payment_intent ?? $session->id,
+                ]);
+
+                // Notifications are handled automatically by the PaymentObserver
+                // when the payment status is updated to 'paid'.
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payment generated successfully.',
+                ]);
             }
 
             return response()->json([
