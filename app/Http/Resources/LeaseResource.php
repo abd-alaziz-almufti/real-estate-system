@@ -28,6 +28,8 @@ class LeaseResource extends JsonResource
             'is_active' => $this->is_active,
             'is_expired' => $this->is_expired,
             'days_remaining' => $this->days_remaining,
+            'termination_date' => $this->termination_date?->format('Y-m-d'),
+            'termination_reason' => $this->termination_reason,
             'total_paid' => $this->total_paid,
             'outstanding_balance' => $this->outstanding_balance,
             
