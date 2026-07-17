@@ -69,6 +69,14 @@ class ViewUnit extends ViewRecord
                                         ->badge()
                                         ->color('gray'),
                                 ])->columns(1),
+
+                            Infolists\Components\Section::make('Description')
+                                ->schema([
+                                    Infolists\Components\TextEntry::make('description')
+                                        ->label('')
+                                        ->placeholder('No description has been added or generated yet.'),
+                                ])
+                                ->collapsible(),
                         ])->columnSpan(2),
 
                         Infolists\Components\Group::make([

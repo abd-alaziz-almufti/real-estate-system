@@ -47,6 +47,7 @@ class Unit extends Model
         'rent_price',
         'status',
         'type',
+        'description',
         'is_featured',
         'bedrooms',
         'bathrooms',

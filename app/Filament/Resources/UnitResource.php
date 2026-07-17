@@ -5,11 +5,13 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UnitResource\Pages;
 use App\Filament\Resources\UnitResource\RelationManagers;
 use App\Models\Unit;
+use App\Services\PropertyDescriptionService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Actions\Action;
 use Filament\Notifications\Notification;
 
 class UnitResource extends Resource
@@ -125,6 +127,17 @@ class UnitResource extends Resource
                 ])
                 
                 ->columns(2),
+
+            Forms\Components\Section::make('Description')
+                ->description('Write a description manually or use AI to generate one.')
+                ->schema([
+                    Forms\Components\Textarea::make('description')
+                        ->label('Unit Description')
+                        ->rows(5)
+                        ->placeholder('Describe this unit for potential tenants...')
+                        ->columnSpanFull(),
+                ])
+                ->collapsible(),
 
             Forms\Components\Section::make('Gallery')
                 ->description('Add images for this unit')
@@ -283,6 +296,65 @@ class UnitResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+
+                // ── AI Description Generator ─────────────────────────────
+                Action::make('generateAiDescription')
+                    ->label('✨ Generate Description')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('warning')
+                    ->requiresConfirmation(false)
+                    ->modalHeading('AI-Generated Description')
+                    ->modalDescription('Review the description below. Click "Approve & Save" to use it, or "Cancel" to keep the existing description.')
+                    ->modalWidth('2xl')
+                    ->form(function (Unit $record): array {
+                        /** @var PropertyDescriptionService $service */
+                        $service = app(PropertyDescriptionService::class);
+
+                        try {
+                            $generated = $service->generate($record);
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('AI Error')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                            $generated = '';
+                        }
+
+                        return [
+                            Forms\Components\Placeholder::make('ai_preview_label')
+                                ->label('')
+                                ->content('The AI generated the following description based on the unit details and amenities:'),
+
+                            Forms\Components\Textarea::make('ai_description')
+                                ->label('Generated Description')
+                                ->default($generated)
+                                ->rows(7)
+                                ->columnSpanFull()
+                                ->readOnly(),
+                        ];
+                    })
+                    ->modalSubmitActionLabel('✅ Approve & Save')
+                    ->action(function (Unit $record, array $data): void {
+                        if (empty($data['ai_description'])) {
+                            Notification::make()
+                                ->title('Nothing to save')
+                                ->warning()
+                                ->send();
+                            return;
+                        }
+
+                        /** @var PropertyDescriptionService $service */
+                        $service = app(PropertyDescriptionService::class);
+                        $service->saveDescription($record, $data['ai_description']);
+
+                        Notification::make()
+                            ->title('Description saved!')
+                            ->body('The AI-generated description has been applied to this unit.')
+                            ->success()
+                            ->send();
+                    }),
+
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
