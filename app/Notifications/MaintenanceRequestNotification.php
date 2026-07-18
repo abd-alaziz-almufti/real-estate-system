@@ -25,7 +25,7 @@ class MaintenanceRequestNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     /**
@@ -57,8 +57,26 @@ class MaintenanceRequestNotification extends Notification implements ShouldQueue
             ->actions([
                 \Filament\Notifications\Actions\Action::make('view')
                     ->button()
-                    ->url(fn () => \App\Filament\Resources\MaintenanceRequestResource::getUrl('view', ['record' => $this->maintenanceRequest->id])),
+                    ->url(\App\Filament\Resources\MaintenanceRequestResource::getUrl('view', ['record' => $this->maintenanceRequest->id])),
             ])
             ->getDatabaseMessage();
+    }
+
+    /**
+     * Get the broadcast representation of the notification.
+     */
+    public function toBroadcast(object $notifiable): \Illuminate\Notifications\Messages\BroadcastMessage
+    {
+        return \Filament\Notifications\Notification::make()
+            ->title('New Maintenance Request')
+            ->body("Unit {$this->maintenanceRequest->unit->name} requires attention.")
+            ->icon('heroicon-o-wrench-screwdriver')
+            ->iconColor('warning')
+            ->actions([
+                \Filament\Notifications\Actions\Action::make('view')
+                    ->button()
+                    ->url(\App\Filament\Resources\MaintenanceRequestResource::getUrl('view', ['record' => $this->maintenanceRequest->id])),
+            ])
+            ->getBroadcastMessage();
     }
 }

@@ -3,6 +3,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasCompany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -18,7 +19,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, HasApiTokens, \App\Traits\HasCompany, HasRoles;
+    use HasFactory, Notifiable, HasApiTokens, HasCompany, HasRoles;
 
     protected $fillable = [
         'company_id',

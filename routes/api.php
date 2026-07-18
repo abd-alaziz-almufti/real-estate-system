@@ -70,6 +70,14 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         ->middleware('role:tenant,sanctum');
     Route::delete('/tenant/rental-requests/{id}', [TenantRentalRequestController::class, 'destroy'])
         ->middleware('role:tenant,sanctum');
+
+    // Tenant Notifications
+    Route::get('/tenant/notifications', [\App\Http\Controllers\Api\TenantNotificationController::class, 'index'])
+        ->middleware('role:tenant,sanctum');
+    Route::post('/tenant/notifications/mark-as-read', [\App\Http\Controllers\Api\TenantNotificationController::class, 'markAsRead'])
+        ->middleware('role:tenant,sanctum');
+    Route::post('/tenant/notifications/{id}/mark-as-read', [\App\Http\Controllers\Api\TenantNotificationController::class, 'markAsRead'])
+        ->middleware('role:tenant,sanctum');
 });
 
 // ── General Public Endpoints
